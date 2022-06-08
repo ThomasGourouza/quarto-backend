@@ -1,0 +1,19 @@
+version: '3.7'
+services:
+  vegetation_db:
+    image: mongo:4.4.6
+    container_name: vegetation_db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: lumba
+      MONGO_INITDB_ROOT_PASSWORD: lumba
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data_container:/data/db
+volumes:
+  mongodb_data_container:
+# commande pour lancer la base de donnée: sudo docker-compose up -d
+# commande pour arrêter la base de donnée: sudo docker-compose down
+
+# commande pour initialiser le projet: sudo mvn clean install
+# commande pour lancer le projet: sudo mvn spring-boot:run
