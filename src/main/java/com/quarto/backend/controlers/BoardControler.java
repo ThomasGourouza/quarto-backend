@@ -3,6 +3,7 @@ package com.quarto.backend.controlers;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -35,9 +36,8 @@ public class BoardControler {
         Board board = boardService.getBoard(id);
         if (board != null) {
             return new ResponseEntity<>(board, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     @PostMapping("/")
@@ -45,9 +45,8 @@ public class BoardControler {
         Board newBoard = boardService.createBoard(board);
         if (newBoard != null) {
             return new ResponseEntity<>(newBoard, HttpStatus.CREATED);
-        } else {
-            return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
+        return new ResponseEntity<>(HttpStatus.CONFLICT);
     }
 
     @PutMapping("/{id}")
@@ -65,11 +64,12 @@ public class BoardControler {
 
     @DeleteMapping("/{id}")
     ResponseEntity<String> removeBoard(@PathVariable String id) {
-        Board boardAlreadySaved = boardService.getBoard(id);
-        if (boardAlreadySaved != null) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.add("name", "value");
+        if (boardService.removeBoard(id)) {
+            return new ResponseEntity<>("Deleted", responseHeaders, HttpStatus.NO_CONTENT);
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("This board doesn't exist", responseHeaders, HttpStatus.NOT_FOUND);
     }
 
 }
