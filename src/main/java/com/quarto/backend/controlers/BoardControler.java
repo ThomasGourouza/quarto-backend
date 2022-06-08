@@ -15,48 +15,48 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.quarto.backend.models.Tree;
-import com.quarto.backend.services.TreeService;
+import com.quarto.backend.models.Board;
+import com.quarto.backend.services.BoardService;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/tree")
-public class TreeControler {
+@RequestMapping("/board")
+public class BoardControler {
     @Autowired
-    private TreeService treeService;
+    private BoardService boardService;
 
     @GetMapping("/")
-    ResponseEntity<List<Tree>> getAllTrees() {
-        return new ResponseEntity<>(treeService.getAllTrees(), HttpStatus.OK);
+    ResponseEntity<List<Board>> getAllBoards() {
+        return new ResponseEntity<>(boardService.getAllBoards(), HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    ResponseEntity<Tree> getTree(@PathVariable String id) {
-        Tree tree = treeService.getTree(id);
-        if (tree != null) {
-            return new ResponseEntity<>(tree, HttpStatus.OK);
+    ResponseEntity<Board> getBoard(@PathVariable String id) {
+        Board board = boardService.getBoard(id);
+        if (board != null) {
+            return new ResponseEntity<>(board, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @PostMapping("/")
-    ResponseEntity<Tree> createTree(@RequestBody Tree tree) {
-        Tree newTree = treeService.createTree(tree);
-        if (newTree != null) {
-            return new ResponseEntity<>(newTree, HttpStatus.CREATED);
+    ResponseEntity<Board> createBoard(@RequestBody Board board) {
+        Board newBoard = boardService.createBoard(board);
+        if (newBoard != null) {
+            return new ResponseEntity<>(newBoard, HttpStatus.CREATED);
         } else {
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
     }
 
     @PutMapping("/{id}")
-    ResponseEntity<Tree> updateTree(@PathVariable String id, @RequestBody Tree tree) {
-        Tree treeAlreadySaved = treeService.getTree(id);
-        if (treeAlreadySaved != null) {
-            Tree updatedTree = treeService.updateTree(id, tree);
-            if (updatedTree != null) {
-                return new ResponseEntity<>(updatedTree, HttpStatus.ACCEPTED);
+    ResponseEntity<Board> updateBoard(@PathVariable String id, @RequestBody Board board) {
+        Board boardAlreadySaved = boardService.getBoard(id);
+        if (boardAlreadySaved != null) {
+            Board updatedBoard = boardService.updateBoard(id, board);
+            if (updatedBoard != null) {
+                return new ResponseEntity<>(updatedBoard, HttpStatus.ACCEPTED);
             }
             return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
@@ -64,10 +64,10 @@ public class TreeControler {
     }
 
     @DeleteMapping("/{id}")
-    ResponseEntity<String> removeTree(@PathVariable String id) {
-        Tree treeAlreadySaved = treeService.getTree(id);
-        if (treeAlreadySaved != null) {
-            return new ResponseEntity<String>(HttpStatus.NO_CONTENT);
+    ResponseEntity<String> removeBoard(@PathVariable String id) {
+        Board boardAlreadySaved = boardService.getBoard(id);
+        if (boardAlreadySaved != null) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }

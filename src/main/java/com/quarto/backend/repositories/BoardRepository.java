@@ -7,12 +7,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.quarto.backend.models.Tree;
+import com.quarto.backend.models.Board;
 
-public interface TreeRepository extends MongoRepository<Tree, String> {
+public interface BoardRepository extends MongoRepository<Board, String> {
 
-    Optional<Tree> findByName(String name);
+    Optional<Board> findByName(String name);
 
-    Page<Tree> findAllBy(TextCriteria criteria, Pageable pageable);
+    Page<Board> findAllBy(TextCriteria criteria, Pageable pageable);
     
 }

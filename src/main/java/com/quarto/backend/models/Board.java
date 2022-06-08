@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Document
 @NoArgsConstructor
 @AllArgsConstructor
-public class Tree {
+public class Board {
     @Id
     public String id;
 
