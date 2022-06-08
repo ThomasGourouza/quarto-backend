@@ -1,4 +1,4 @@
-package com.vegetation.backend.controlers;
+package com.quarto.backend.controlers;
 
 import java.util.List;
 
@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.vegetation.backend.models.Tree;
-import com.vegetation.backend.services.TreeService;
+import com.quarto.backend.models.Tree;
+import com.quarto.backend.services.TreeService;
 
 @RestController
 @CrossOrigin

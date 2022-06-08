@@ -1,4 +1,4 @@
-package com.vegetation.backend.services;
+package com.quarto.backend.services;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.vegetation.backend.models.Tree;
-import com.vegetation.backend.repositories.TreeRepository;
+import com.quarto.backend.models.Tree;
+import com.quarto.backend.repositories.TreeRepository;
 
 @Service
 public class TreeService {

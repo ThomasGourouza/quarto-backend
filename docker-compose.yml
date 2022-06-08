@@ -1,8 +1,8 @@
 version: '3.7'
 services:
-  vegetation_db:
+  quarto_db:
     image: mongo:4.4.6
-    container_name: vegetation_db
+    container_name: quarto_db
     environment:
       MONGO_INITDB_ROOT_USERNAME: lumba
       MONGO_INITDB_ROOT_PASSWORD: lumba

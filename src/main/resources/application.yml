@@ -8,7 +8,7 @@ spring:
             authentication-database: admin
             username: lumba
             password: lumba
-            database: vegetation
+            database: quarto
             port: 27017
             host: localhost
 logging:

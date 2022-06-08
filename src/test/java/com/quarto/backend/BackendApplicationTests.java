@@ -1,4 +1,4 @@
-package com.vegetation.backend;
+package com.quarto.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

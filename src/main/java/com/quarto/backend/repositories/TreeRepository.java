@@ -1,4 +1,4 @@
-package com.vegetation.backend.repositories;
+package com.quarto.backend.repositories;
 
 import java.util.Optional;
 
@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.vegetation.backend.models.Tree;
+import com.quarto.backend.models.Tree;
 
 public interface TreeRepository extends MongoRepository<Tree, String> {
 
