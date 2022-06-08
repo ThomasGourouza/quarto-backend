@@ -66,8 +66,9 @@ public class BoardControler {
     ResponseEntity<String> removeBoard(@PathVariable String id) {
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("name", "value");
+        String message = "The board " + id + " has been deleted.";
         if (boardService.removeBoard(id)) {
-            return new ResponseEntity<>("Deleted", responseHeaders, HttpStatus.NO_CONTENT);
+            return new ResponseEntity<>(message, responseHeaders, HttpStatus.OK);
         }
         return new ResponseEntity<>("This board doesn't exist", responseHeaders, HttpStatus.NOT_FOUND);
     }
