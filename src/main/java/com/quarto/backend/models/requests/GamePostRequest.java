@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BoardRequest {
+public class GamePostRequest {
     private String name;
     private String description;
 }
