@@ -12,8 +12,3 @@ services:
       - mongodb_data_container:/data/db
 volumes:
   mongodb_data_container:
-# commande pour lancer la base de donnée: sudo docker-compose up -d
-# commande pour arrêter la base de donnée: sudo docker-compose down
-
-# commande pour initialiser le projet: sudo mvn clean install
-# commande pour lancer le projet: sudo mvn spring-boot:run

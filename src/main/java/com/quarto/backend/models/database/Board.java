@@ -1,4 +1,4 @@
-package com.quarto.backend.models;
+package com.quarto.backend.models.database;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.TextIndexed;
