@@ -8,8 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PositionPostRequest {
-    private String gameId;
     private int row;
     private int column;
-    private Boolean toBoard;
+    private boolean toBoard;
 }

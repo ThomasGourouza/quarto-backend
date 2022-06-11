@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.quarto.backend.models.database.Game;
+import com.quarto.backend.models.database.Position;
 import com.quarto.backend.models.requests.GamePostRequest;
+import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.services.GameService;
 
 @RestController
@@ -56,7 +59,7 @@ public class GameControler {
 
     @PostMapping("/")
     ResponseEntity<Game> createGame(@RequestBody GamePostRequest gamePostRequest) {
-        Game game = gameService.mapToGame(gamePostRequest);
+        Game game = gameService.initGame(gamePostRequest);
         if (game == null) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
@@ -67,36 +70,72 @@ public class GameControler {
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}")
-    ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePostRequest gamePutRequest) {
-        Game newGame = gameService.mapToGame(gamePutRequest);
-        if (newGame == null) {
-            return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
-        }
-        Game gameAlreadySaved = gameService.getGame(id);
-        if (gameAlreadySaved == null) {
+    @PatchMapping("/{id}")
+    ResponseEntity<Game> setPosition(@PathVariable String id, @RequestBody PositionPostRequest positionPostRequest) {
+        Game game = gameService.getGame(id);
+        if (game == null) {
             return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
         }
-        List<Game> sameNameGames = gameService.getAllGamesByNameExceptId(newGame.getName(), id);
+        if (gameService.isWrongPositionJSON(positionPostRequest)) {
+            return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
+        }
+        List<Position> positions = game.getPositions();
+        Position lastPosition = positions.get(positions.size() - 1);
+        if (positionPostRequest.isToBoard()) {
+            lastPosition.getBoard().forEach(square -> {
+                if (square.getRow() == positionPostRequest.getRow()
+                        && square.getColumn() == positionPostRequest.getColumn()) {
+                    square.setPiece(lastPosition.getCurrentPiece());
+                }
+            });
+            lastPosition.setCurrentPiece(null);
+        } else {
+            lastPosition.getSet().forEach(square -> {
+                if (square.getRow() == positionPostRequest.getRow()
+                        && square.getColumn() == positionPostRequest.getColumn()) {
+                    lastPosition.setCurrentPiece(square.getPiece());
+                    square.setPiece(null);
+                }
+            });
+        }
+        lastPosition.setRank(lastPosition.getRank() + 1);
+        lastPosition.setCurrentPlayer(
+                StringUtils.equals(lastPosition.getCurrentPlayer(), game.getPlayer2()) ?
+                        game.getPlayer1() : game.getPlayer2()
+        );
+        game.getPositions().add(lastPosition);
+        return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
+    }
+
+    @PutMapping("/{id}")
+    ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePostRequest gamePutRequest) {
+        if (gameService.isWrongGameJSON(gamePutRequest)) {
+            return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
+        }
+        Game game = gameService.getGame(id);
+        if (game == null) {
+            return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        List<Game> sameNameGames = gameService.getAllGamesByNameExceptId(gamePutRequest.getName(), id);
         if (!sameNameGames.isEmpty()) {
             return headers(NAME_EXISTS, HttpStatus.CONFLICT);
         }
-        gameAlreadySaved.setName(newGame.getName());
-        gameAlreadySaved.setDescription(newGame.getDescription());
-        if (StringUtils.equals(newGame.getPlayer1(), newGame.getPlayer2())) {
+        game.setName(gamePutRequest.getName());
+        game.setDescription(gamePutRequest.getDescription());
+        if (StringUtils.equals(gamePutRequest.getPlayer1(), gamePutRequest.getPlayer2())) {
             return headers(SAME_PLAYERS, HttpStatus.CONFLICT);
         }
-        gameAlreadySaved.getPositions().forEach(position -> {
-            if (StringUtils.equals(position.getCurrentPlayer(), gameAlreadySaved.getPlayer1())) {
-                position.setCurrentPlayer(newGame.getPlayer1());
+        game.getPositions().forEach(position -> {
+            if (StringUtils.equals(position.getCurrentPlayer(), game.getPlayer1())) {
+                position.setCurrentPlayer(gamePutRequest.getPlayer1());
             }
-            if (StringUtils.equals(position.getCurrentPlayer(), gameAlreadySaved.getPlayer2())) {
-                position.setCurrentPlayer(newGame.getPlayer2());
+            if (StringUtils.equals(position.getCurrentPlayer(), game.getPlayer2())) {
+                position.setCurrentPlayer(gamePutRequest.getPlayer2());
             }
         });
-        gameAlreadySaved.setPlayer1(newGame.getPlayer1());
-        gameAlreadySaved.setPlayer2(newGame.getPlayer2());
-        return new ResponseEntity<>(gameService.createGame(gameAlreadySaved), HttpStatus.ACCEPTED);
+        game.setPlayer1(gamePutRequest.getPlayer1());
+        game.setPlayer2(gamePutRequest.getPlayer2());
+        return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
     @DeleteMapping("/{id}")

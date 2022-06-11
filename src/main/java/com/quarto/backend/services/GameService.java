@@ -13,6 +13,7 @@ import com.quarto.backend.models.database.Position;
 import com.quarto.backend.models.database.Square;
 import com.quarto.backend.models.database.characteristics.*;
 import com.quarto.backend.models.requests.GamePostRequest;
+import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.repositories.GameRepository;
 
 @Service
@@ -51,12 +52,8 @@ public class GameService {
         gameRepository.deleteById(id);
     }
 
-    public Game mapToGame(GamePostRequest gamePostRequest) {
-        boolean wrongConditions = StringUtils.equals(gamePostRequest.getPlayer1(), null)
-                || StringUtils.equals(gamePostRequest.getPlayer2(), null)
-                || StringUtils.equals(gamePostRequest.getName(), null)
-                || StringUtils.equals(gamePostRequest.getDescription(), null);
-        if (wrongConditions) {
+    public Game initGame(GamePostRequest gamePostRequest) {
+        if (isWrongGameJSON(gamePostRequest)) {
             return null;
         }
         Game game = new Game(
@@ -103,5 +100,17 @@ public class GameService {
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.FULL));
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.HOLE));
         return pieces;
+    }
+
+    public boolean isWrongPositionJSON(PositionPostRequest positionPostRequest) {
+        return positionPostRequest.getRow() == 0
+                || positionPostRequest.getColumn() == 0;
+    }
+
+    public boolean isWrongGameJSON(GamePostRequest gamePostRequest) {
+        return StringUtils.equals(gamePostRequest.getPlayer1(), null)
+                || StringUtils.equals(gamePostRequest.getPlayer2(), null)
+                || StringUtils.equals(gamePostRequest.getName(), null)
+                || StringUtils.equals(gamePostRequest.getDescription(), null);
     }
 }
