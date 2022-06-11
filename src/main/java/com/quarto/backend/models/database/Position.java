@@ -10,9 +10,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Position {
-    private Integer rank;
+    private int rank;
     private String currentPlayer;
     private List<Square> board;
     private List<Square> set;
     private Piece currentPiece;
+
+    public Position(int rank, String currentPlayer, List<Square> board, List<Square> set) {
+        this.rank = rank;
+        this.currentPlayer = currentPlayer;
+        this.board = board;
+        this.set = set;
+        this.currentPiece = null;
+    }
+
 }

@@ -8,11 +8,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Square {
-    private Coordinate coordinate;
+    private int row;
+    private int column;
     private Piece piece;
 
-    public Square(Coordinate coordinate) {
-        this.coordinate = coordinate;
+    public Square(int row, int column) {
+        this.row = row;
+        this.column = column;
         this.piece = null;
     }
 

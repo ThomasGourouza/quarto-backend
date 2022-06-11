@@ -1,5 +1,7 @@
 package com.quarto.backend.models.database;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
@@ -32,7 +34,17 @@ public class Game {
     private String player2;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    private String date;
+    private LocalDateTime date;
 
     private List<Position> positions;
+
+    public Game(String name, String description, String player1, String player2) {
+        this.name = name;
+        this.description = description;
+        this.player1 = player1;
+        this.player2 = player2;
+        this.date = LocalDateTime.now();
+        this.positions = new ArrayList<>();
+    }
+
 }

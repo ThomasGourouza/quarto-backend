@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.quarto.backend.models.customs.Method;
 import com.quarto.backend.models.database.Game;
 import com.quarto.backend.models.requests.GamePostRequest;
 import com.quarto.backend.services.GameService;
@@ -32,6 +30,7 @@ public class GameControler {
     private static final String WRONG_JSON = "Wrong JSON";
     private static final String NAME_EXISTS = "Name already exists";
     private static final String NOT_FOUND = "Game doesn't exist";
+    private static final String SAME_PLAYERS = "The two players have the same name";
 
     @Autowired
     private GameService gameService;
@@ -57,7 +56,7 @@ public class GameControler {
 
     @PostMapping("/")
     ResponseEntity<Game> createGame(@RequestBody GamePostRequest gamePostRequest) {
-        Game game = gameService.mapToGame(gamePostRequest, Method.POST);
+        Game game = gameService.mapToGame(gamePostRequest);
         if (game == null) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
@@ -70,7 +69,7 @@ public class GameControler {
 
     @PutMapping("/{id}")
     ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePostRequest gamePutRequest) {
-        Game newGame = gameService.mapToGame(gamePutRequest, Method.PUT);
+        Game newGame = gameService.mapToGame(gamePutRequest);
         if (newGame == null) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
@@ -84,29 +83,19 @@ public class GameControler {
         }
         gameAlreadySaved.setName(newGame.getName());
         gameAlreadySaved.setDescription(newGame.getDescription());
-        return new ResponseEntity<>(gameService.createGame(gameAlreadySaved), HttpStatus.ACCEPTED);
-    }
-
-    @PatchMapping("/{id}")
-    ResponseEntity<Game> patchGame(@PathVariable String id, @RequestBody GamePostRequest gamePatchRequest) {
-        Game newGame = gameService.mapToGame(gamePatchRequest, Method.PATCH);
-        if (newGame == null) {
-            return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
+        if (StringUtils.equals(newGame.getPlayer1(), newGame.getPlayer2())) {
+            return headers(SAME_PLAYERS, HttpStatus.CONFLICT);
         }
-        Game gameAlreadySaved = gameService.getGame(id);
-        if (gameAlreadySaved == null) {
-            return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
-        }
-        if (StringUtils.isNotBlank(newGame.getName())) {
-            List<Game> sameNameGames = gameService.getAllGamesByNameExceptId(newGame.getName(), id);
-            if (!sameNameGames.isEmpty()) {
-                return headers(NAME_EXISTS, HttpStatus.CONFLICT);
+        gameAlreadySaved.getPositions().forEach(position -> {
+            if (StringUtils.equals(position.getCurrentPlayer(), gameAlreadySaved.getPlayer1())) {
+                position.setCurrentPlayer(newGame.getPlayer1());
             }
-            gameAlreadySaved.setName(newGame.getName());
-        }
-        if (StringUtils.isNotBlank(newGame.getDescription())) {
-            gameAlreadySaved.setDescription(newGame.getDescription());
-        }
+            if (StringUtils.equals(position.getCurrentPlayer(), gameAlreadySaved.getPlayer2())) {
+                position.setCurrentPlayer(newGame.getPlayer2());
+            }
+        });
+        gameAlreadySaved.setPlayer1(newGame.getPlayer1());
+        gameAlreadySaved.setPlayer2(newGame.getPlayer2());
         return new ResponseEntity<>(gameService.createGame(gameAlreadySaved), HttpStatus.ACCEPTED);
     }
 

@@ -10,4 +10,6 @@ import lombok.NoArgsConstructor;
 public class GamePostRequest {
     private String name;
     private String description;
+    private String player1;
+    private String player2;
 }
