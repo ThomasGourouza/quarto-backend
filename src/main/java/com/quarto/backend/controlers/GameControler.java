@@ -91,6 +91,19 @@ public class GameControler {
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
+    @PatchMapping("/{id}/play/ai")
+    ResponseEntity<Game> setAiPosition(@PathVariable String id) {
+        Game game = gameService.getGame(id);
+        if (game == null) {
+            return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        List<Position> positions = game.getPositions();
+        Position lastPosition = positions.get(positions.size() - 1);
+        List<Position> newPositions = gameService.getAiPositions(lastPosition, game.getPlayer1(), game.getPlayer2());
+        game.getPositions().addAll(newPositions);
+        return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
+    }
+
     @PutMapping("/{id}")
     ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePostRequest gamePutRequest) {
         if (gameService.isWrongGameJSON(gamePutRequest)) {

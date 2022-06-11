@@ -74,11 +74,89 @@ public class GameService {
         return game;
     }
 
+    public boolean isWrongPositionJSON(PositionPostRequest positionPostRequest) {
+        return positionPostRequest.getRow() == 0
+                || positionPostRequest.getColumn() == 0;
+    }
+
+    public boolean isWrongGameJSON(GamePostRequest gamePostRequest) {
+        return StringUtils.equals(gamePostRequest.getPlayer1(), null)
+                || StringUtils.equals(gamePostRequest.getPlayer2(), null)
+                || StringUtils.equals(gamePostRequest.getName(), null)
+                || StringUtils.equals(gamePostRequest.getDescription(), null);
+    }
+
+    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1, String player2) {
+        Position newPosition = getNextPosition(lastPosition, player1, player2);
+        if (lastPosition.getCurrentPiece() != null ) {
+            newPosition.getBoard().forEach(square -> {
+                if (isRequestSquare(square, positionPostRequest)) {
+                    square.setPiece(lastPosition.getCurrentPiece());
+                }
+            });
+        } else {
+            newPosition.getSet().forEach(square -> {
+                if (isRequestSquare(square, positionPostRequest)) {
+                    newPosition.setCurrentPiece(square.getPiece());
+                    square.setPiece(null);
+                }
+            });
+        }
+        return newPosition;
+    }
+
+    public List<Position> getAiPositions(Position lastPosition, String player1, String player2) {
+        List<Position> positions = new ArrayList<>();
+        Position newPosition = getNextPosition(lastPosition, player1, player2);
+        if (lastPosition.getCurrentPiece() != null) {
+            // TODO: deux moves -> placer piece sur board puis choisir piece dans set
+        } else {
+            // TODO: un seul move -> choisir piece dans set
+        }
+        positions.add(newPosition);
+        return positions;
+    }
+
     private List<Square> buildSquares() {
         List<Square> squares = new ArrayList<>();
         List<Integer> numbers = List.of(1, 2, 3, 4);
         numbers.forEach(row -> numbers.forEach(column -> squares.add(new Square(row, column))));
         return squares;
+    }
+
+    private boolean isRequestSquare(Square square, PositionPostRequest positionPostRequest) {
+        return square.getRow() == positionPostRequest.getRow()
+            && square.getColumn() == positionPostRequest.getColumn();
+    }
+
+    private Position getNextPosition(Position lastPosition, String player1, String player2) {
+        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ?
+                player1 : player2;
+        return new Position(
+            lastPosition.getRank() + 1,
+            lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
+            copyOf(lastPosition.getBoard()),
+            copyOf(lastPosition.getSet()),
+            null
+        );
+    }
+
+    private List<Square> copyOf(List<Square> squares) {
+        List<Square> boarsquaresCopy =  new ArrayList<>();
+        squares.forEach(square -> {
+            Piece pieceCopy = new Piece();
+            if (square.getPiece() != null) {
+                pieceCopy.setColor(square.getPiece().getColor());
+                pieceCopy.setShape(square.getPiece().getShape());
+                pieceCopy.setSize(square.getPiece().getSize());
+                pieceCopy.setTop(square.getPiece().getTop());
+            } else {
+                pieceCopy = null;
+            }
+            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy);
+            boarsquaresCopy.add(squareCopy);
+        });
+        return boarsquaresCopy;
     }
 
     private List<Piece> getPieces() {
@@ -100,67 +178,5 @@ public class GameService {
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.FULL));
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.HOLE));
         return pieces;
-    }
-
-    public boolean isWrongPositionJSON(PositionPostRequest positionPostRequest) {
-        return positionPostRequest.getRow() == 0
-                || positionPostRequest.getColumn() == 0;
-    }
-
-    public boolean isWrongGameJSON(GamePostRequest gamePostRequest) {
-        return StringUtils.equals(gamePostRequest.getPlayer1(), null)
-                || StringUtils.equals(gamePostRequest.getPlayer2(), null)
-                || StringUtils.equals(gamePostRequest.getName(), null)
-                || StringUtils.equals(gamePostRequest.getDescription(), null);
-    }
-
-    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1, String player2) {
-        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ?
-                player1 : player2;
-        Position newPosition = new Position(
-            lastPosition.getRank() + 1,
-            lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
-            copyOf(lastPosition.getBoard()),
-            copyOf(lastPosition.getSet()),
-            null
-        );
-        if (lastPosition.getCurrentPiece() != null ) {
-            newPosition.getBoard().forEach(square -> {
-                if (isRequestSquare(square, positionPostRequest)) {
-                    square.setPiece(lastPosition.getCurrentPiece());
-                }
-            });
-        } else {
-            newPosition.getSet().forEach(square -> {
-                if (isRequestSquare(square, positionPostRequest)) {
-                    newPosition.setCurrentPiece(square.getPiece());
-                    square.setPiece(null);
-                }
-            });
-        }
-        return newPosition;
-    }
-
-    private List<Square> copyOf(List<Square> squares) {
-        List<Square> boarsquaresCopy =  new ArrayList<>();
-        squares.forEach(square -> {
-            Piece pieceCopy = new Piece();
-            if (square.getPiece() != null) {
-                pieceCopy.setColor(square.getPiece().getColor());
-                pieceCopy.setShape(square.getPiece().getShape());
-                pieceCopy.setSize(square.getPiece().getSize());
-                pieceCopy.setTop(square.getPiece().getTop());
-            } else {
-                pieceCopy = null;
-            }
-            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy);
-            boarsquaresCopy.add(squareCopy);
-        });
-        return boarsquaresCopy;
-    }
-
-    private boolean isRequestSquare(Square square, PositionPostRequest positionPostRequest) {
-        return square.getRow() == positionPostRequest.getRow()
-            && square.getColumn() == positionPostRequest.getColumn();
     }
 }
