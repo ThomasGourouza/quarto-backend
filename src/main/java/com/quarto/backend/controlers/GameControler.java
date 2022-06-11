@@ -81,29 +81,13 @@ public class GameControler {
         }
         List<Position> positions = game.getPositions();
         Position lastPosition = positions.get(positions.size() - 1);
-        if (positionPostRequest.isToBoard()) {
-            lastPosition.getBoard().forEach(square -> {
-                if (square.getRow() == positionPostRequest.getRow()
-                        && square.getColumn() == positionPostRequest.getColumn()) {
-                    square.setPiece(lastPosition.getCurrentPiece());
-                }
-            });
-            lastPosition.setCurrentPiece(null);
-        } else {
-            lastPosition.getSet().forEach(square -> {
-                if (square.getRow() == positionPostRequest.getRow()
-                        && square.getColumn() == positionPostRequest.getColumn()) {
-                    lastPosition.setCurrentPiece(square.getPiece());
-                    square.setPiece(null);
-                }
-            });
-        }
-        lastPosition.setRank(lastPosition.getRank() + 1);
-        lastPosition.setCurrentPlayer(
-                StringUtils.equals(lastPosition.getCurrentPlayer(), game.getPlayer2()) ?
-                        game.getPlayer1() : game.getPlayer2()
+        Position newPosition = gameService.getNewPosition(
+            lastPosition,
+            positionPostRequest,
+            game.getPlayer1(),
+            game.getPlayer2()
         );
-        game.getPositions().add(lastPosition);
+        game.getPositions().add(newPosition);
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 

@@ -113,4 +113,54 @@ public class GameService {
                 || StringUtils.equals(gamePostRequest.getName(), null)
                 || StringUtils.equals(gamePostRequest.getDescription(), null);
     }
+
+    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1, String player2) {
+        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ?
+                player1 : player2;
+        Position newPosition = new Position(
+            lastPosition.getRank() + 1,
+            positionPostRequest.isToBoard() ? lastPosition.getCurrentPlayer() : nextPlayer,
+            copyOf(lastPosition.getBoard()),
+            copyOf(lastPosition.getSet()),
+            null
+        );
+        if (positionPostRequest.isToBoard()) {
+            newPosition.getBoard().forEach(square -> {
+                if (isRequestSquare(square, positionPostRequest)) {
+                    square.setPiece(lastPosition.getCurrentPiece());
+                }
+            });
+        } else {
+            newPosition.getSet().forEach(square -> {
+                if (isRequestSquare(square, positionPostRequest)) {
+                    newPosition.setCurrentPiece(square.getPiece());
+                    square.setPiece(null);
+                }
+            });
+        }
+        return newPosition;
+    }
+
+    private List<Square> copyOf(List<Square> squares) {
+        List<Square> boarsquaresCopy =  new ArrayList<>();
+        squares.forEach(square -> {
+            Piece pieceCopy = new Piece();
+            if (square.getPiece() != null) {
+                pieceCopy.setColor(square.getPiece().getColor());
+                pieceCopy.setShape(square.getPiece().getShape());
+                pieceCopy.setSize(square.getPiece().getSize());
+                pieceCopy.setTop(square.getPiece().getTop());
+            } else {
+                pieceCopy = null;
+            }
+            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy);
+            boarsquaresCopy.add(squareCopy);
+        });
+        return boarsquaresCopy;
+    }
+
+    private boolean isRequestSquare(Square square, PositionPostRequest positionPostRequest) {
+        return square.getRow() == positionPostRequest.getRow()
+            && square.getColumn() == positionPostRequest.getColumn();
+    }
 }
