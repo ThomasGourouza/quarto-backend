@@ -70,7 +70,7 @@ public class GameControler {
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.CREATED);
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/{id}/play")
     ResponseEntity<Game> setPosition(@PathVariable String id, @RequestBody PositionPostRequest positionPostRequest) {
         Game game = gameService.getGame(id);
         if (game == null) {

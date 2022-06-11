@@ -119,12 +119,12 @@ public class GameService {
                 player1 : player2;
         Position newPosition = new Position(
             lastPosition.getRank() + 1,
-            positionPostRequest.isToBoard() ? lastPosition.getCurrentPlayer() : nextPlayer,
+            lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
             copyOf(lastPosition.getBoard()),
             copyOf(lastPosition.getSet()),
             null
         );
-        if (positionPostRequest.isToBoard()) {
+        if (lastPosition.getCurrentPiece() != null ) {
             newPosition.getBoard().forEach(square -> {
                 if (isRequestSquare(square, positionPostRequest)) {
                     square.setPiece(lastPosition.getCurrentPiece());

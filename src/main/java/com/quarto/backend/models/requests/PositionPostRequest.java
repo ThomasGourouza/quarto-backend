@@ -10,5 +10,4 @@ import lombok.NoArgsConstructor;
 public class PositionPostRequest {
     private int row;
     private int column;
-    private boolean toBoard;
 }
