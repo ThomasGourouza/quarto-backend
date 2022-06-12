@@ -119,6 +119,13 @@ public class GameService {
                     lastPosition.getCurrentPiece());
             if (!winningSquares.isEmpty()) {
                 // choisir au hasard une des square pour y poser la piece
+                Square chosenSquare = winningSquares.get(0);
+                newPosition.getBoard().forEach(square -> {
+                    if (square.getRow() == chosenSquare.getRow()
+                    && square.getColumn() == chosenSquare.getColumn()) {
+                        square.setPiece(lastPosition.getCurrentPiece());
+                    }
+                });
             }
         } else {
             // TODO: un seul move -> choisir piece dans set
