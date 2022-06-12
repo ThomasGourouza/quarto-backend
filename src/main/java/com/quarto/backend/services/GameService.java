@@ -90,9 +90,10 @@ public class GameService {
                 || StringUtils.equals(gamePostRequest.getDescription(), null);
     }
 
-    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1, String player2) {
+    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1,
+            String player2) {
         Position newPosition = getNextPosition(lastPosition, player1, player2);
-        if (lastPosition.getCurrentPiece() != null ) {
+        if (lastPosition.getCurrentPiece() != null) {
             newPosition.getBoard().forEach(square -> {
                 if (isRequestSquare(square, positionPostRequest)) {
                     square.setPiece(lastPosition.getCurrentPiece());
@@ -114,7 +115,11 @@ public class GameService {
         Position newPosition = getNextPosition(lastPosition, player1, player2);
         if (lastPosition.getCurrentPiece() != null) {
             // TODO: deux moves -> placer piece sur board puis choisir piece dans set
-            Map<Square, Piece> winningPossibilities = getWinningPossibilities(lastPosition.getBoard(), lastPosition.getCurrentPiece());
+            List<Square> winningSquares = getWinningSquares(lastPosition.getBoard(),
+                    lastPosition.getCurrentPiece());
+            if (!winningSquares.isEmpty()) {
+                // choisir au hasard une des square pour y poser la piece
+            }
         } else {
             // TODO: un seul move -> choisir piece dans set
         }
@@ -122,37 +127,29 @@ public class GameService {
         return positions;
     }
 
-    private Map<Square, Piece> getWinningPossibilities(List<Square> board, Piece currentPiece) {
-        Map<Square, Piece> matchingTrios = new HashMap<>();
-        List<Trio> trios = getAllTrios(board);
-        List<Trio> triosMatchingWithCurrentPiece = trios.stream().filter(trio ->
-            isMatchingPiece(currentPiece, trio.getMatchingPieceCharacteristics())
-        ).collect(Collectors.toList());
-        return matchingTrios;
+    private List<Square> getWinningSquares(List<Square> board, Piece currentPiece) {
+        return getAllTrios(board).stream()
+                .filter(trio -> isMatchingPiece(currentPiece, trio.getMatchingPieceCharacteristics()))
+                .map(trio -> trio.getMissingPieceSquare()).collect(Collectors.toList());
     }
 
     private boolean isMatchingPiece(Piece currentPiece, List<String> matchingPieceCharacteristics) {
-        return matchingPieceCharacteristics.stream().anyMatch(characteristic ->
-            List.of(
+        return matchingPieceCharacteristics.stream().anyMatch(characteristic -> List.of(
                 currentPiece.getColor().toString(),
                 currentPiece.getSize().toString(),
                 currentPiece.getShape().toString(),
-                currentPiece.getTop().toString()
-            ).contains(characteristic)
-        );
+                currentPiece.getTop().toString()).contains(characteristic));
     }
 
     private boolean areMatchingSquares(List<Square> squares) {
-        return squares.stream().allMatch(square ->
-            Color.WHITE.equals(square.getPiece().getColor())
-            || Color.BLACK.equals(square.getPiece().getColor())
-            || Size.BIG.equals(square.getPiece().getSize())
-            || Size.SMALL.equals(square.getPiece().getSize())
-            || Shape.SQUARE.equals(square.getPiece().getShape())
-            || Shape.ROUND.equals(square.getPiece().getShape())
-            || Top.FULL.equals(square.getPiece().getTop())
-            || Top.HOLE.equals(square.getPiece().getTop())
-        );
+        return squares.stream().allMatch(square -> Color.WHITE.equals(square.getPiece().getColor())
+                || Color.BLACK.equals(square.getPiece().getColor())
+                || Size.BIG.equals(square.getPiece().getSize())
+                || Size.SMALL.equals(square.getPiece().getSize())
+                || Shape.SQUARE.equals(square.getPiece().getShape())
+                || Shape.ROUND.equals(square.getPiece().getShape())
+                || Top.FULL.equals(square.getPiece().getTop())
+                || Top.HOLE.equals(square.getPiece().getTop()));
     }
 
     private List<Trio> getAllTrios(List<Square> board) {
@@ -182,20 +179,15 @@ public class GameService {
                     return false;
             }
         }).collect(Collectors.toList());
-        List<Square> occupiedSquares = boardLine.stream().filter(square ->
-            square.getPiece() != null
-        ).collect(Collectors.toList());
+        List<Square> occupiedSquares = boardLine.stream().filter(square -> square.getPiece() != null)
+                .collect(Collectors.toList());
         if (occupiedSquares.size() == 3 && areMatchingSquares(occupiedSquares)) {
             List<String> matchingCharacteristics = getMatchingCharacteristics(occupiedSquares);
-            boardLine.stream().filter(square ->
-                square.getPiece() == null
-            ).findAny().ifPresent(missingPieceSquare ->
-                trios.add(new Trio(
-                    occupiedSquares,
-                    missingPieceSquare,
-                    matchingCharacteristics
-                ))
-            );
+            boardLine.stream().filter(square -> square.getPiece() == null).findAny()
+                    .ifPresent(missingPieceSquare -> trios.add(new Trio(
+                            occupiedSquares,
+                            missingPieceSquare,
+                            matchingCharacteristics)));
         }
     }
 
@@ -237,23 +229,21 @@ public class GameService {
 
     private boolean isRequestSquare(Square square, PositionPostRequest positionPostRequest) {
         return square.getRow() == positionPostRequest.getRow()
-            && square.getColumn() == positionPostRequest.getColumn();
+                && square.getColumn() == positionPostRequest.getColumn();
     }
 
     private Position getNextPosition(Position lastPosition, String player1, String player2) {
-        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ?
-                player1 : player2;
+        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ? player1 : player2;
         return new Position(
-            lastPosition.getRank() + 1,
-            lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
-            copyOf(lastPosition.getBoard()),
-            copyOf(lastPosition.getSet()),
-            null
-        );
+                lastPosition.getRank() + 1,
+                lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
+                copyOf(lastPosition.getBoard()),
+                copyOf(lastPosition.getSet()),
+                null);
     }
 
     private List<Square> copyOf(List<Square> squares) {
-        List<Square> boarsquaresCopy =  new ArrayList<>();
+        List<Square> boarsquaresCopy = new ArrayList<>();
         squares.forEach(square -> {
             Piece pieceCopy = new Piece();
             if (square.getPiece() != null) {
