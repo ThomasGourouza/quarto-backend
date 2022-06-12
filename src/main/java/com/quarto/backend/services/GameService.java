@@ -1,12 +1,16 @@
 package com.quarto.backend.services;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.quarto.backend.models.custom.Trio;
 import com.quarto.backend.models.database.Game;
 import com.quarto.backend.models.database.Piece;
 import com.quarto.backend.models.database.Position;
@@ -110,11 +114,118 @@ public class GameService {
         Position newPosition = getNextPosition(lastPosition, player1, player2);
         if (lastPosition.getCurrentPiece() != null) {
             // TODO: deux moves -> placer piece sur board puis choisir piece dans set
+            Map<Square, Piece> winningPossibilities = getWinningPossibilities(lastPosition.getBoard(), lastPosition.getCurrentPiece());
         } else {
             // TODO: un seul move -> choisir piece dans set
         }
         positions.add(newPosition);
         return positions;
+    }
+
+    private Map<Square, Piece> getWinningPossibilities(List<Square> board, Piece currentPiece) {
+        Map<Square, Piece> matchingTrios = new HashMap<>();
+        List<Trio> trios = getAllTrios(board);
+        List<Trio> triosMatchingWithCurrentPiece = trios.stream().filter(trio ->
+            isMatchingPiece(currentPiece, trio.getMatchingPieceCharacteristics())
+        ).collect(Collectors.toList());
+        return matchingTrios;
+    }
+
+    private boolean isMatchingPiece(Piece currentPiece, List<String> matchingPieceCharacteristics) {
+        return matchingPieceCharacteristics.stream().anyMatch(characteristic ->
+            List.of(
+                currentPiece.getColor().toString(),
+                currentPiece.getSize().toString(),
+                currentPiece.getShape().toString(),
+                currentPiece.getTop().toString()
+            ).contains(characteristic)
+        );
+    }
+
+    private boolean areMatchingSquares(List<Square> squares) {
+        return squares.stream().allMatch(square ->
+            Color.WHITE.equals(square.getPiece().getColor())
+            || Color.BLACK.equals(square.getPiece().getColor())
+            || Size.BIG.equals(square.getPiece().getSize())
+            || Size.SMALL.equals(square.getPiece().getSize())
+            || Shape.SQUARE.equals(square.getPiece().getShape())
+            || Shape.ROUND.equals(square.getPiece().getShape())
+            || Top.FULL.equals(square.getPiece().getTop())
+            || Top.HOLE.equals(square.getPiece().getTop())
+        );
+    }
+
+    private List<Trio> getAllTrios(List<Square> board) {
+        List<Trio> trios = new ArrayList<>();
+        List<Integer> numbers = List.of(1, 2, 3, 4);
+        numbers.forEach(number -> {
+            fillMatchingTrioList(board, trios, "rows", number);
+            fillMatchingTrioList(board, trios, "columns", number);
+        });
+        fillMatchingTrioList(board, trios, "firstDiagonal", 0);
+        fillMatchingTrioList(board, trios, "secondDiagonal", 0);
+        return trios;
+    }
+
+    private void fillMatchingTrioList(List<Square> board, List<Trio> trios, String direction, Integer number) {
+        List<Square> boardLine = board.stream().filter(square -> {
+            switch (direction) {
+                case "firstDiagonal":
+                    return square.getRow() == square.getColumn();
+                case "secondDiagonal":
+                    return square.getRow() + square.getColumn() == 5;
+                case "rows":
+                    return number.intValue() == square.getRow();
+                case "columns":
+                    return number.intValue() == square.getRow();
+                default:
+                    return false;
+            }
+        }).collect(Collectors.toList());
+        List<Square> occupiedSquares = boardLine.stream().filter(square ->
+            square.getPiece() != null
+        ).collect(Collectors.toList());
+        if (occupiedSquares.size() == 3 && areMatchingSquares(occupiedSquares)) {
+            List<String> matchingCharacteristics = getMatchingCharacteristics(occupiedSquares);
+            boardLine.stream().filter(square ->
+                square.getPiece() == null
+            ).findAny().ifPresent(missingPieceSquare ->
+                trios.add(new Trio(
+                    occupiedSquares,
+                    missingPieceSquare,
+                    matchingCharacteristics
+                ))
+            );
+        }
+    }
+
+    private List<String> getMatchingCharacteristics(List<Square> squares) {
+        List<String> matchingCharacteristics = new ArrayList<>();
+        if (squares.stream().allMatch(square -> Color.WHITE.equals(square.getPiece().getColor()))) {
+            matchingCharacteristics.add(Color.WHITE.toString());
+        }
+        if (squares.stream().allMatch(square -> Color.BLACK.equals(square.getPiece().getColor()))) {
+            matchingCharacteristics.add(Color.BLACK.toString());
+        }
+        if (squares.stream().allMatch(square -> Size.BIG.equals(square.getPiece().getSize()))) {
+            matchingCharacteristics.add(Size.BIG.toString());
+        }
+        if (squares.stream().allMatch(square -> Size.SMALL.equals(square.getPiece().getSize()))) {
+            matchingCharacteristics.add(Size.SMALL.toString());
+        }
+        if (squares.stream().allMatch(square -> Shape.SQUARE.equals(square.getPiece().getShape()))) {
+            matchingCharacteristics.add(Shape.SQUARE.toString());
+        }
+        if (squares.stream().allMatch(square -> Shape.ROUND.equals(square.getPiece().getShape()))) {
+            matchingCharacteristics.add(Shape.ROUND.toString());
+        }
+        if (squares.stream().allMatch(square -> Top.FULL.equals(square.getPiece().getTop()))) {
+            matchingCharacteristics.add(Top.FULL.toString());
+        }
+        if (squares.stream().allMatch(square -> Top.HOLE.equals(square.getPiece().getTop()))) {
+            matchingCharacteristics.add(Top.HOLE.toString());
+        }
+        return matchingCharacteristics;
     }
 
     private List<Square> buildSquares() {
