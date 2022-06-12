@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -110,6 +111,21 @@ public class GameService {
         return newPosition;
     }
 
+    public boolean isconflictPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
+        if (lastPosition.getCurrentPiece() != null) {
+            Optional<Square> targetSquareOpt = lastPosition.getBoard().stream()
+                    .filter(square -> square.getRow() == positionPostRequest.getRow()
+                            && square.getColumn() == positionPostRequest.getColumn())
+                    .findAny();
+            return targetSquareOpt.isEmpty() || targetSquareOpt.get().getPiece() != null;
+        }
+        Optional<Square> targetSquareOpt = lastPosition.getSet().stream()
+                .filter(square -> square.getRow() == positionPostRequest.getRow()
+                        && square.getColumn() == positionPostRequest.getColumn())
+                .findAny();
+        return targetSquareOpt.isEmpty() || targetSquareOpt.get().getPiece() == null;
+    }
+
     public List<Position> getAiPositions(Position lastPosition, String player1, String player2) {
         List<Position> positions = new ArrayList<>();
         Position newPosition = getNextPosition(lastPosition, player1, player2);
@@ -122,7 +138,7 @@ public class GameService {
                 Square chosenSquare = winningSquares.get(0);
                 newPosition.getBoard().forEach(square -> {
                     if (square.getRow() == chosenSquare.getRow()
-                    && square.getColumn() == chosenSquare.getColumn()) {
+                            && square.getColumn() == chosenSquare.getColumn()) {
                         square.setPiece(lastPosition.getCurrentPiece());
                     }
                 });

@@ -34,6 +34,7 @@ public class GameControler {
     private static final String NAME_EXISTS = "Name already exists";
     private static final String NOT_FOUND = "Game doesn't exist";
     private static final String SAME_PLAYERS = "The two players have the same name";
+    private static final String CONFLICT_POSITION = "Impossible move";
 
     @Autowired
     private GameService gameService;
@@ -81,6 +82,9 @@ public class GameControler {
         }
         List<Position> positions = game.getPositions();
         Position lastPosition = positions.get(positions.size() - 1);
+        if (gameService.isconflictPosition(lastPosition, positionPostRequest)) {
+            return headers(CONFLICT_POSITION, HttpStatus.CONFLICT);
+        }
         Position newPosition = gameService.getNewPosition(
             lastPosition,
             positionPostRequest,
