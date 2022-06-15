@@ -80,8 +80,7 @@ public class GameControler {
         if (gameService.isWrongPositionJSON(positionPostRequest)) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
-        List<Position> positions = game.getPositions();
-        Position lastPosition = positions.get(positions.size() - 1);
+        Position lastPosition = gameService.getLastPosition(game);
         if (gameService.isconflictPosition(lastPosition, positionPostRequest)) {
             return headers(CONFLICT_POSITION, HttpStatus.CONFLICT);
         }
@@ -101,8 +100,7 @@ public class GameControler {
         if (game == null) {
             return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
         }
-        List<Position> positions = game.getPositions();
-        Position lastPosition = positions.get(positions.size() - 1);
+        Position lastPosition = gameService.getLastPosition(game);
         List<Position> newPositions = gameService.getAiPositions(lastPosition, game.getPlayer1(), game.getPlayer2());
         game.getPositions().addAll(newPositions);
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
