@@ -100,6 +100,7 @@ public class GameService {
                     square.setPiece(lastPosition.getCurrentPiece());
                 }
             });
+            scanVictory(newPosition.getBoard());
         } else {
             newPosition.getSet().forEach(square -> {
                 if (isRequestSquare(square, positionPostRequest)) {
@@ -109,6 +110,10 @@ public class GameService {
             });
         }
         return newPosition;
+    }
+
+    private void scanVictory(List<Square> board) {
+        // TODO: set le param 'winner' avec un boolean sur les squares gagnantes
     }
 
     public boolean isconflictPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
@@ -277,7 +282,7 @@ public class GameService {
             } else {
                 pieceCopy = null;
             }
-            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy);
+            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy, false);
             boarsquaresCopy.add(squareCopy);
         });
         return boarsquaresCopy;
@@ -302,5 +307,10 @@ public class GameService {
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.FULL));
         pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.HOLE));
         return pieces;
+    }
+
+    public Position getLastPosition(Game game) {
+        List<Position> positions = game.getPositions();
+        return positions.get(positions.size() - 1);
     }
 }
