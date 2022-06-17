@@ -115,32 +115,26 @@ public class GameService {
     private void scanVictory(List<Square> board) {
         List<List<Square>> tableOfLines = new ArrayList<>();
         List.of(1, 2, 3, 4).forEach(number -> {
-            List<Square> rows = board.stream().filter(square -> square.getRow() == number).collect(Collectors.toList());
-            List<Square> columns = board.stream().filter(square -> square.getColumn() == number)
+            List<Square> row = board.stream().filter(square -> square.getRow() == number)
                     .collect(Collectors.toList());
-            tableOfLines.add(rows);
-            tableOfLines.add(columns);
+            List<Square> column = board.stream().filter(square -> square.getColumn() == number)
+                    .collect(Collectors.toList());
+            tableOfLines.add(row);
+            tableOfLines.add(column);
         });
-        List<Square> firstDiag = board.stream().filter(square -> square.getRow() == square.getColumn()).collect(Collectors.toList());
-        List<Square> secondDiag = board.stream().filter(square -> square.getRow() + square.getColumn() == 5).collect(Collectors.toList());
+        List<Square> firstDiag = board.stream().filter(square -> square.getRow() == square.getColumn())
+                .collect(Collectors.toList());
+        List<Square> secondDiag = board.stream().filter(square -> square.getRow() + square.getColumn() == 5)
+                .collect(Collectors.toList());
         tableOfLines.add(firstDiag);
         tableOfLines.add(secondDiag);
 
-        List<Square> wins = new ArrayList<>();
-        tableOfLines.stream().forEach(squares -> {
-            if (squares.stream().allMatch(square -> square.getPiece() != null)) { // && isLineWin(squares)
-                wins.addAll(squares);
+        tableOfLines.stream().forEach(line -> {
+            if (line.stream().allMatch(square -> square.getPiece() != null) && !getMatchingCharacteristics(line).isEmpty()) {
+                line.forEach(square -> square.setWinner(true));
             }
         });
-        // set winner pour toutes les squares de wins
     }
-
-    // private isLineWin(squares: Array<Square>): boolean {
-    // return [0, 4].includes(squares.filter((square) => square.piece.isBig).length)
-    // || [0, 4].includes(squares.filter((square) => square.piece.isFull).length)
-    // || [0, 4].includes(squares.filter((square) => square.piece.isSquare).length)
-    // || [0, 4].includes(squares.filter((square) => square.piece.isWhite).length);
-    // }
 
     public boolean isconflictPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
         if (lastPosition.getCurrentPiece() != null) {
@@ -184,7 +178,7 @@ public class GameService {
     private List<Square> getWinningSquares(List<Square> board, Piece currentPiece) {
         return getAllTrios(board).stream()
                 .filter(trio -> isMatchingPiece(currentPiece, trio.getMatchingPieceCharacteristics()))
-                .map(trio -> trio.getMissingPieceSquare()).collect(Collectors.toList());
+                .map(Trio::getMissingPieceSquare).collect(Collectors.toList());
     }
 
     private boolean isMatchingPiece(Piece currentPiece, List<String> matchingPieceCharacteristics) {

@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.quarto.backend.models.database.Game;
 import com.quarto.backend.models.database.Position;
+import com.quarto.backend.models.database.Square;
 import com.quarto.backend.models.requests.GamePostRequest;
 import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.services.GameService;
@@ -90,6 +91,7 @@ public class GameControler {
             game.getPlayer1(),
             game.getPlayer2()
         );
+        game.setOver(newPosition.getBoard().stream().anyMatch(Square::isWinner));
         game.getPositions().add(newPosition);
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
