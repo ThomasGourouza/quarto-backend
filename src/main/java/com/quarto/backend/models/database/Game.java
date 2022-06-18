@@ -38,7 +38,7 @@ public class Game {
 
     private List<Position> positions;
 
-    private boolean isOver;
+    private boolean over;
 
     public Game(String name, String description, String player1, String player2) {
         this.name = name;

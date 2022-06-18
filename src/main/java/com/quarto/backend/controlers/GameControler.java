@@ -36,6 +36,7 @@ public class GameControler {
     private static final String NOT_FOUND = "Game doesn't exist";
     private static final String SAME_PLAYERS = "The two players have the same name";
     private static final String CONFLICT_POSITION = "Impossible move";
+    private static final String GAME_OVER = "The game is already over";
 
     @Autowired
     private GameService gameService;
@@ -81,6 +82,9 @@ public class GameControler {
         if (gameService.isWrongPositionJSON(positionPostRequest)) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
+        if (game.isOver()) {
+            return headers(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
+        }
         Position lastPosition = gameService.getLastPosition(game);
         if (gameService.isconflictPosition(lastPosition, positionPostRequest)) {
             return headers(CONFLICT_POSITION, HttpStatus.CONFLICT);
@@ -101,6 +105,9 @@ public class GameControler {
         Game game = gameService.getGame(id);
         if (game == null) {
             return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
+        }
+        if (game.isOver()) {
+            return headers(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
         }
         Position lastPosition = gameService.getLastPosition(game);
         List<Position> newPositions = gameService.getAiPositions(lastPosition, game.getPlayer1(), game.getPlayer2());

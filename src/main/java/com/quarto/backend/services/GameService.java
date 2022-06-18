@@ -130,7 +130,8 @@ public class GameService {
         tableOfLines.add(secondDiag);
 
         tableOfLines.stream().forEach(line -> {
-            if (line.stream().allMatch(square -> square.getPiece() != null) && !getMatchingCharacteristics(line).isEmpty()) {
+            if (line.stream().allMatch(square -> square.getPiece() != null)
+                    && !getMatchingCharacteristics(line).isEmpty()) {
                 line.forEach(square -> square.setWinner(true));
             }
         });
@@ -154,18 +155,33 @@ public class GameService {
     public List<Position> getAiPositions(Position lastPosition, String player1, String player2) {
         List<Position> positions = new ArrayList<>();
         Position newPosition = getNextPosition(lastPosition, player1, player2);
+
         if (lastPosition.getCurrentPiece() != null) {
             // TODO: deux moves -> placer piece sur board puis choisir piece dans set
+            // partie 1: placer la piece
             List<Square> winningSquares = getWinningSquares(lastPosition.getBoard(),
                     lastPosition.getCurrentPiece());
+            // ... sur une case gagnante
             if (!winningSquares.isEmpty()) {
                 // choisir au hasard une des square pour y poser la piece
                 Square chosenSquare = winningSquares.get(0);
-                newPosition.getBoard().forEach(square -> {
-                    if (square.getRow() == chosenSquare.getRow()
-                            && square.getColumn() == chosenSquare.getColumn()) {
-                        square.setPiece(lastPosition.getCurrentPiece());
-                    }
+                newPosition.getBoard().stream().filter(square -> square.getRow() == chosenSquare.getRow()
+                        && square.getColumn() == chosenSquare.getColumn()).findAny()
+                        .ifPresent(square -> square.setPiece(lastPosition.getCurrentPiece()));
+            } else {
+                // ... ailleurs: fait des simulations de placements au hasard puis regarde pour chaque simulation
+                // les trios dont on peut choisir une piece à donner qui ne gagne pas
+
+                List<Position> simulations = new ArrayList<>();
+                // TODO: être sûr que le set est non vide
+                lastPosition.getSet().forEach(s -> {
+                    lastPosition.getBoard().forEach(square -> {
+                        Piece piece = s.getPiece();
+                        Position simulPosition = new Position();
+                        // pour chaque piece du set, et pour chaque case restantes du board, ajouter une simulation de placement
+                        // avec 
+                        simulations.add(simulPosition);
+                    });
                 });
             }
         } else {
