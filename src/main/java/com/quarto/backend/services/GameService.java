@@ -16,7 +16,6 @@ import com.quarto.backend.models.database.Position;
 import com.quarto.backend.models.database.Square;
 import com.quarto.backend.models.database.characteristics.*;
 import com.quarto.backend.models.requests.GamePostRequest;
-import com.quarto.backend.models.requests.GamePutRequest;
 import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.repositories.GameRepository;
 
@@ -91,11 +90,6 @@ public class GameService {
                 || StringUtils.equals(gamePostRequest.getDescription(), null);
     }
 
-    public boolean isWrongGameJSON(GamePutRequest gamePostRequest) {
-        return StringUtils.equals(gamePostRequest.getName(), null)
-                || StringUtils.equals(gamePostRequest.getDescription(), null);
-    }
-
     public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
         Position newPosition = getNextPosition(lastPosition);
         if (lastPosition.getCurrentPiece() != null) {
@@ -158,53 +152,92 @@ public class GameService {
 
     public List<Position> getAiPositions(Position lastPosition) {
         List<Position> positions = new ArrayList<>();
-        Position newPosition = getNextPosition(lastPosition);
-
         if (lastPosition.getCurrentPiece() != null) {
-            // TODO: deux moves -> placer piece sur board puis choisir piece dans set
-            // partie 1: placer la piece
             List<Square> winningSquares = getWinningSquares(lastPosition.getBoard(),
                     lastPosition.getCurrentPiece());
-            // ... sur une case gagnante
             if (!winningSquares.isEmpty()) {
-                // choisir au hasard une des square pour y poser la piece
-                Square chosenSquare = winningSquares.get(0);
-                newPosition.getBoard().stream().filter(square -> square.getRow() == chosenSquare.getRow()
-                        && square.getColumn() == chosenSquare.getColumn()).findAny()
-                        .ifPresent(square -> square.setPiece(lastPosition.getCurrentPiece()));
+                Position newPosition = getNextPosition(lastPosition);
+                winningSquares.stream().findAny()
+                        .ifPresent(winningSquare -> newPosition.getBoard().stream()
+                                .filter(square -> square.getRow() == winningSquare.getRow()
+                                        && square.getColumn() == winningSquare.getColumn())
+                                .findAny()
+                                .ifPresent(square -> square.setPiece(lastPosition.getCurrentPiece())));
+                positions.add(newPosition);
             } else {
-                // ... ailleurs: fait des simulations de placements au hasard puis regarde pour
-                // chaque simulation
-                // les trios dont on peut choisir une piece à donner qui ne gagne pas
-
-                List<List<Position>> simulations = new ArrayList<>();
-                // pour chaque case restantes du board où poser la piece, associer une liste de
-                // piece à donner
-                getRemainingSquares(lastPosition.getBoard()).forEach(s -> {
-                    PositionPostRequest positionPostRequest = new PositionPostRequest(s.getRow(), s.getColumn());
-                    Position simulPosition = getNewPosition(lastPosition, positionPostRequest);
-                    // pour cette position, chercher les pieces du set qui ne gagnent pas
-                    simulPosition.getSet().forEach(sp -> {
-                        List<Square> ws = getWinningSquares(simulPosition.getBoard(), lastPosition.getCurrentPiece());
-                        if (ws.isEmpty()) {
-                            PositionPostRequest positionPostRequest2 = new PositionPostRequest(sp.getRow(), sp.getColumn());
-                            Position simulPosition2 = getNewPosition(simulPosition, positionPostRequest2);
-                            simulations.add(List.of(simulPosition, simulPosition2));
-                        }
+                List<Square> remainingSet = getRemainingSquaresWithPiece(lastPosition.getSet());
+                if (remainingSet.isEmpty()) {
+                    Position newPosition = getNextPosition(lastPosition);
+                    newPosition.getBoard().stream().filter(square -> square.getPiece() == null).findAny()
+                            .ifPresent(square -> square.setPiece(lastPosition.getCurrentPiece()));
+                    positions.add(newPosition);
+                } else {
+                    List<List<Position>> simulations = new ArrayList<>();
+                    List<Square> remainingSquares = getRemainingSquares(lastPosition.getBoard());
+                    remainingSquares.forEach(s -> {
+                        PositionPostRequest positionPostRequest = new PositionPostRequest(s.getRow(), s.getColumn());
+                        Position simulPosition = getNewPosition(lastPosition, positionPostRequest);
+                        remainingSet.forEach(sp -> {
+                            List<Square> ws = getWinningSquares(simulPosition.getBoard(),
+                                    lastPosition.getCurrentPiece());
+                            if (ws.isEmpty()) {
+                                PositionPostRequest positionPostRequest2 = new PositionPostRequest(sp.getRow(),
+                                        sp.getColumn());
+                                Position simulPosition2 = getNewPosition(simulPosition, positionPostRequest2);
+                                simulations.add(List.of(simulPosition, simulPosition2));
+                            }
+                        });
                     });
-                });
-                // choisir au hasard un item de simulations, si non vide
-                simulations.stream().findAny().ifPresent(pos -> positions.addAll(pos));
+                    if (!simulations.isEmpty()) {
+                        simulations.stream().findAny().ifPresent(pos -> positions.addAll(pos));
+                    } else {
+                        remainingSquares.stream().findAny().ifPresent(square -> {
+                            PositionPostRequest positionPostRequest = new PositionPostRequest(square.getRow(),
+                                    square.getColumn());
+                            Position pos1 = getNewPosition(lastPosition, positionPostRequest);
+                            remainingSet.stream().findAny().ifPresent(squarePiece -> {
+                                PositionPostRequest positionPostRequest2 = new PositionPostRequest(squarePiece.getRow(),
+                                        squarePiece.getColumn());
+                                Position pos2 = getNewPosition(pos1, positionPostRequest2);
+                                positions.addAll(List.of(pos1, pos2));
+                            });
+                        });
+                    }
+                }
             }
         } else {
-            // TODO: un seul move -> choisir piece dans set
+            List<Position> simulations = new ArrayList<>();
+            List<Square> remainingSet = getRemainingSquaresWithPiece(lastPosition.getSet());
+            remainingSet.forEach(square -> {
+                List<Square> ws = getWinningSquares(lastPosition.getBoard(),
+                        square.getPiece());
+                if (ws.isEmpty()) {
+                    PositionPostRequest positionPostRequest = new PositionPostRequest(square.getRow(),
+                            square.getColumn());
+                    Position position = getNewPosition(lastPosition, positionPostRequest);
+                    simulations.add(position);
+                }
+            });
+            if (!simulations.isEmpty()) {
+                simulations.stream().findAny().ifPresent(position -> positions.add(position));
+            } else {
+                remainingSet.stream().findAny().ifPresent(square -> {
+                    PositionPostRequest positionPostRequest = new PositionPostRequest(square.getRow(),
+                            square.getColumn());
+                    Position position = getNewPosition(lastPosition, positionPostRequest);
+                    positions.add(position);
+                });
+            }
         }
-        positions.add(newPosition);
         return positions;
     }
 
     private List<Square> getRemainingSquares(List<Square> board) {
-        return board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList());
+        return copyOf(board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList()));
+    }
+
+    private List<Square> getRemainingSquaresWithPiece(List<Square> set) {
+        return copyOf(set.stream().filter(square -> square.getPiece() != null).collect(Collectors.toList()));
     }
 
     private List<Square> getWinningSquares(List<Square> board, Piece currentPiece) {
@@ -373,6 +406,15 @@ public class GameService {
     public boolean isGameEnd(Position newPosition) {
         return newPosition.getSet().stream().allMatch(square -> square.getPiece() == null)
                 && newPosition.getCurrentPiece() == null;
+    }
+
+    public void addNewPositionToGame(Game game, Position newPosition) {
+        game.setOver(isWin(newPosition) || isGameEnd(newPosition));
+        if (game.isOver() && isWin(newPosition)) {
+            game.getPlayers().stream().filter(player -> player.getId() == newPosition.getCurrentPlayerId()).findAny()
+                    .ifPresent(player -> player.setWinner(true));
+        }
+        game.getPositions().add(newPosition);
     }
 
 }

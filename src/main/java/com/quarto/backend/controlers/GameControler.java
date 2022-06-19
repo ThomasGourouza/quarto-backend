@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.quarto.backend.models.database.Game;
 import com.quarto.backend.models.database.Position;
 import com.quarto.backend.models.requests.GamePostRequest;
-import com.quarto.backend.models.requests.GamePutRequest;
 import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.services.GameService;
 
@@ -73,7 +72,7 @@ public class GameControler {
     }
 
     @PutMapping("/{id}")
-    ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePutRequest gamePutRequest) {
+    ResponseEntity<Game> putGame(@PathVariable String id, @RequestBody GamePostRequest gamePutRequest) {
         if (gameService.isWrongGameJSON(gamePutRequest)) {
             return headers(WRONG_JSON, HttpStatus.BAD_REQUEST);
         }
@@ -83,6 +82,9 @@ public class GameControler {
         }
         game.setName(gamePutRequest.getName());
         game.setDescription(gamePutRequest.getDescription());
+        game.getPlayers().forEach(player -> {
+            player.setName(player.getId() == 1 ? gamePutRequest.getPlayer1() : gamePutRequest.getPlayer2());
+        });
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
@@ -105,12 +107,7 @@ public class GameControler {
         Position newPosition = gameService.getNewPosition(
                 lastPosition,
                 positionPostRequest);
-        game.setOver(gameService.isWin(newPosition) || gameService.isGameEnd(newPosition));
-        if (game.isOver() && gameService.isWin(newPosition)) {
-            game.getPlayers().stream().filter(player -> player.getId() == newPosition.getCurrentPlayerId()).findAny()
-                    .ifPresent(player -> player.setWinner(true));
-        }
-        game.getPositions().add(newPosition);
+        gameService.addNewPositionToGame(game, newPosition);
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
@@ -125,7 +122,12 @@ public class GameControler {
         }
         Position lastPosition = gameService.getLastPosition(game);
         List<Position> newPositions = gameService.getAiPositions(lastPosition);
-        game.getPositions().addAll(newPositions);
+        if (newPositions.size() == 1) {
+            Position newLastPosition = newPositions.get(0);
+            gameService.addNewPositionToGame(game, newLastPosition);
+        } else {
+            game.getPositions().addAll(newPositions);
+        }
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
