@@ -177,24 +177,34 @@ public class GameService {
                 // chaque simulation
                 // les trios dont on peut choisir une piece à donner qui ne gagne pas
 
-                List<Position> simulations = new ArrayList<>();
-                // TODO: être sûr que le set est non vide
-                lastPosition.getSet().forEach(s -> {
-                    lastPosition.getBoard().forEach(square -> {
-                        Piece piece = s.getPiece();
-                        Position simulPosition = new Position();
-                        // pour chaque piece du set, et pour chaque case restantes du board, ajouter une
-                        // simulation de placement
-                        // avec
-                        simulations.add(simulPosition);
+                List<List<Position>> simulations = new ArrayList<>();
+                // pour chaque case restantes du board où poser la piece, associer une liste de
+                // piece à donner
+                getRemainingSquares(lastPosition.getBoard()).forEach(s -> {
+                    PositionPostRequest positionPostRequest = new PositionPostRequest(s.getRow(), s.getColumn());
+                    Position simulPosition = getNewPosition(lastPosition, positionPostRequest);
+                    // pour cette position, chercher les pieces du set qui ne gagnent pas
+                    simulPosition.getSet().forEach(sp -> {
+                        List<Square> ws = getWinningSquares(simulPosition.getBoard(), lastPosition.getCurrentPiece());
+                        if (ws.isEmpty()) {
+                            PositionPostRequest positionPostRequest2 = new PositionPostRequest(sp.getRow(), sp.getColumn());
+                            Position simulPosition2 = getNewPosition(simulPosition, positionPostRequest2);
+                            simulations.add(List.of(simulPosition, simulPosition2));
+                        }
                     });
                 });
+                // choisir au hasard un item de simulations, si non vide
+                simulations.stream().findAny().ifPresent(pos -> positions.addAll(pos));
             }
         } else {
             // TODO: un seul move -> choisir piece dans set
         }
         positions.add(newPosition);
         return positions;
+    }
+
+    private List<Square> getRemainingSquares(List<Square> board) {
+        return board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList());
     }
 
     private List<Square> getWinningSquares(List<Square> board, Piece currentPiece) {
