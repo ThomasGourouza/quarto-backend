@@ -120,15 +120,15 @@ public class GameControler {
         if (game.isOver()) {
             return headers(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
         }
-        Position lastPosition = gameService.getLastPosition(game);
-        List<PositionPostRequest> newPositionRequests = gameService.getAiPositions(lastPosition);
-        newPositionRequests.forEach(positionRequest -> {
+        gameService.getAiPositions(gameService.getLastPosition(game)).forEach(positionRequest -> {
+            Game newGame = gameService.getGame(id);
             Position newPosition = gameService.getNewPosition(
-                    gameService.getLastPosition(game),
+                    gameService.getLastPosition(newGame),
                     positionRequest);
-            gameService.addNewPositionToGame(game, newPosition);
+            gameService.addNewPositionToGame(newGame, newPosition);
+            gameService.createGame(newGame);
         });
-        return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(gameService.getGame(id), HttpStatus.ACCEPTED);
     }
 
     @DeleteMapping("/{id}")

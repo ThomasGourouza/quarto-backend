@@ -3,6 +3,7 @@ package com.quarto.backend.services;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +24,8 @@ import com.quarto.backend.repositories.GameRepository;
 public class GameService {
     @Autowired
     private GameRepository gameRepository;
+
+    private Random rand = new Random();
 
     public List<Game> getAllGames() {
         return gameRepository.findAll();
@@ -152,11 +155,9 @@ public class GameService {
 
     private PositionPostRequest getWinningPosition(List<Square> winningSquares) {
         PositionPostRequest positionPostRequest = new PositionPostRequest();
-        winningSquares.stream().findAny()
-                .ifPresent(winningSquare -> {
-                    positionPostRequest.setRow(winningSquare.getRow());
-                    positionPostRequest.setColumn(winningSquare.getColumn());
-                });
+        Square winningSquare = getRandom(winningSquares);
+        positionPostRequest.setRow(winningSquare.getRow());
+        positionPostRequest.setColumn(winningSquare.getColumn());
         return positionPostRequest;
     }
 
@@ -179,22 +180,32 @@ public class GameService {
 
     private PositionPostRequest setPieceOnRandomBoardSquare(Position lastPosition) {
         PositionPostRequest positionPostRequest = new PositionPostRequest();
-        lastPosition.getBoard().stream().filter(square -> square.getPiece() == null).findAny()
-                .ifPresent(square -> {
-                    positionPostRequest.setRow(square.getRow());
-                    positionPostRequest.setColumn(square.getColumn());
-                });
+        Square square = getRandom(
+                lastPosition.getBoard().stream().filter(s -> s.getPiece() == null).collect(Collectors.toList()));
+        positionPostRequest.setRow(square.getRow());
+        positionPostRequest.setColumn(square.getColumn());
         return positionPostRequest;
     }
 
     private PositionPostRequest giveRandomPieceSquare(Position lastPosition) {
         PositionPostRequest positionPostRequest = new PositionPostRequest();
-        lastPosition.getSet().stream().filter(square -> square.getPiece() != null).findAny()
-                .ifPresent(square -> {
-                    positionPostRequest.setRow(square.getRow());
-                    positionPostRequest.setColumn(square.getColumn());
-                });
+        Square square = getRandom(
+                lastPosition.getSet().stream().filter(s -> s.getPiece() != null).collect(Collectors.toList()));
+        positionPostRequest.setRow(square.getRow());
+        positionPostRequest.setColumn(square.getColumn());
         return positionPostRequest;
+    }
+
+    private Square getRandom(List<Square> squares) {
+        return squares.get(rand.nextInt(squares.size()));
+    }
+
+    private List<PositionPostRequest> getRandomPostRequests(List<List<PositionPostRequest>> simulations) {
+        return simulations.get(rand.nextInt(simulations.size()));
+    }
+
+    private PositionPostRequest getRandomPostRequest(List<PositionPostRequest> simulations) {
+        return simulations.get(rand.nextInt(simulations.size()));
     }
 
     public List<PositionPostRequest> getAiPositions(Position lastPosition) {
@@ -213,7 +224,7 @@ public class GameService {
                     fillSimulations(simulations, remainingSet, getRemainingSquares(lastPosition.getBoard()),
                             lastPosition);
                     if (!simulations.isEmpty()) {
-                        simulations.stream().findAny().ifPresent(posRequest -> positionPostRequests.addAll(posRequest));
+                        positionPostRequests.addAll(getRandomPostRequests(simulations));
                     } else {
                         positionPostRequests.add(setPieceOnRandomBoardSquare(lastPosition));
                         positionPostRequests.add(giveRandomPieceSquare(lastPosition));
@@ -231,7 +242,7 @@ public class GameService {
                 }
             });
             if (!simulations.isEmpty()) {
-                simulations.stream().findAny().ifPresent(positionRequest -> positionPostRequests.add(positionRequest));
+                positionPostRequests.add(getRandomPostRequest(simulations));
             } else {
                 positionPostRequests.add(giveRandomPieceSquare(lastPosition));
             }
