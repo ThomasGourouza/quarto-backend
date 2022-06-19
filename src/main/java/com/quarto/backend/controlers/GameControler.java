@@ -121,13 +121,13 @@ public class GameControler {
             return headers(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
         }
         Position lastPosition = gameService.getLastPosition(game);
-        List<Position> newPositions = gameService.getAiPositions(lastPosition);
-        if (newPositions.size() == 1) {
-            Position newLastPosition = newPositions.get(0);
-            gameService.addNewPositionToGame(game, newLastPosition);
-        } else {
-            game.getPositions().addAll(newPositions);
-        }
+        List<PositionPostRequest> newPositionRequests = gameService.getAiPositions(lastPosition);
+        newPositionRequests.forEach(positionRequest -> {
+            Position newPosition = gameService.getNewPosition(
+                    gameService.getLastPosition(game),
+                    positionRequest);
+            gameService.addNewPositionToGame(game, newPosition);
+        });
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
