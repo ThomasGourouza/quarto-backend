@@ -11,14 +11,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Position {
     private int rank;
-    private String currentPlayer;
+    private int currentPlayerId;
     private List<Square> board;
     private List<Square> set;
     private Piece currentPiece;
 
-    public Position(int rank, String currentPlayer, List<Square> board, List<Square> set) {
+    public Position(int rank, int currentPlayerId, List<Square> board, List<Square> set) {
         this.rank = rank;
-        this.currentPlayer = currentPlayer;
+        this.currentPlayerId = currentPlayerId;
         this.board = board;
         this.set = set;
         this.currentPiece = null;

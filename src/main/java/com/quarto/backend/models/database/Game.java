@@ -27,24 +27,20 @@ public class Game {
     @TextIndexed
     private String description;
 
-    @TextIndexed
-    private String player1;
+    private List<Player> players;
 
-    @TextIndexed
-    private String player2;
+    private boolean over;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime date;
 
     private List<Position> positions;
 
-    private boolean over;
-
     public Game(String name, String description, String player1, String player2) {
         this.name = name;
         this.description = description;
-        this.player1 = player1;
-        this.player2 = player2;
+        this.players = List.of(new Player(1, player1), new Player(2, player2));
+        this.over = false;
         this.date = LocalDateTime.now();
         this.positions = new ArrayList<>();
     }

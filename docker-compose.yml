@@ -9,6 +9,6 @@ services:
     ports:
       - 27017:27017
     volumes:
-      - mongodb_data_container:/data/db
+      - mongodb_data_container:/data/quarto_db
 volumes:
   mongodb_data_container:

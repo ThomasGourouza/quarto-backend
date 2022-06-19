@@ -1,9 +1,7 @@
 package com.quarto.backend.services;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -18,6 +16,7 @@ import com.quarto.backend.models.database.Position;
 import com.quarto.backend.models.database.Square;
 import com.quarto.backend.models.database.characteristics.*;
 import com.quarto.backend.models.requests.GamePostRequest;
+import com.quarto.backend.models.requests.GamePutRequest;
 import com.quarto.backend.models.requests.PositionPostRequest;
 import com.quarto.backend.repositories.GameRepository;
 
@@ -57,10 +56,11 @@ public class GameService {
         gameRepository.deleteById(id);
     }
 
+    public void removeAllGames() {
+        gameRepository.deleteAll();
+    }
+
     public Game initGame(GamePostRequest gamePostRequest) {
-        if (isWrongGameJSON(gamePostRequest)) {
-            return null;
-        }
         Game game = new Game(
                 gamePostRequest.getName(),
                 gamePostRequest.getDescription(),
@@ -68,7 +68,7 @@ public class GameService {
                 gamePostRequest.getPlayer2());
         Position initialPosition = new Position(
                 0,
-                gamePostRequest.getPlayer1(),
+                1,
                 buildSquares(),
                 buildSquares());
         List<Piece> pieces = getPieces();
@@ -91,9 +91,13 @@ public class GameService {
                 || StringUtils.equals(gamePostRequest.getDescription(), null);
     }
 
-    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest, String player1,
-            String player2) {
-        Position newPosition = getNextPosition(lastPosition, player1, player2);
+    public boolean isWrongGameJSON(GamePutRequest gamePostRequest) {
+        return StringUtils.equals(gamePostRequest.getName(), null)
+                || StringUtils.equals(gamePostRequest.getDescription(), null);
+    }
+
+    public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
+        Position newPosition = getNextPosition(lastPosition);
         if (lastPosition.getCurrentPiece() != null) {
             newPosition.getBoard().forEach(square -> {
                 if (isRequestSquare(square, positionPostRequest)) {
@@ -152,9 +156,9 @@ public class GameService {
         return targetSquareOpt.isEmpty() || targetSquareOpt.get().getPiece() == null;
     }
 
-    public List<Position> getAiPositions(Position lastPosition, String player1, String player2) {
+    public List<Position> getAiPositions(Position lastPosition) {
         List<Position> positions = new ArrayList<>();
-        Position newPosition = getNextPosition(lastPosition, player1, player2);
+        Position newPosition = getNextPosition(lastPosition);
 
         if (lastPosition.getCurrentPiece() != null) {
             // TODO: deux moves -> placer piece sur board puis choisir piece dans set
@@ -169,7 +173,8 @@ public class GameService {
                         && square.getColumn() == chosenSquare.getColumn()).findAny()
                         .ifPresent(square -> square.setPiece(lastPosition.getCurrentPiece()));
             } else {
-                // ... ailleurs: fait des simulations de placements au hasard puis regarde pour chaque simulation
+                // ... ailleurs: fait des simulations de placements au hasard puis regarde pour
+                // chaque simulation
                 // les trios dont on peut choisir une piece à donner qui ne gagne pas
 
                 List<Position> simulations = new ArrayList<>();
@@ -178,8 +183,9 @@ public class GameService {
                     lastPosition.getBoard().forEach(square -> {
                         Piece piece = s.getPiece();
                         Position simulPosition = new Position();
-                        // pour chaque piece du set, et pour chaque case restantes du board, ajouter une simulation de placement
-                        // avec 
+                        // pour chaque piece du set, et pour chaque case restantes du board, ajouter une
+                        // simulation de placement
+                        // avec
                         simulations.add(simulPosition);
                     });
                 });
@@ -296,11 +302,11 @@ public class GameService {
                 && square.getColumn() == positionPostRequest.getColumn();
     }
 
-    private Position getNextPosition(Position lastPosition, String player1, String player2) {
-        String nextPlayer = StringUtils.equals(lastPosition.getCurrentPlayer(), player2) ? player1 : player2;
+    private Position getNextPosition(Position lastPosition) {
+        int nextPlayerId = lastPosition.getCurrentPlayerId() == 2 ? 1 : 2;
         return new Position(
                 lastPosition.getRank() + 1,
-                lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayer() : nextPlayer,
+                lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayerId() : nextPlayerId,
                 copyOf(lastPosition.getBoard()),
                 copyOf(lastPosition.getSet()),
                 null);
@@ -349,4 +355,14 @@ public class GameService {
         List<Position> positions = game.getPositions();
         return positions.get(positions.size() - 1);
     }
+
+    public boolean isWin(Position newPosition) {
+        return newPosition.getBoard().stream().anyMatch(Square::isWinner);
+    }
+
+    public boolean isGameEnd(Position newPosition) {
+        return newPosition.getSet().stream().allMatch(square -> square.getPiece() == null)
+                && newPosition.getCurrentPiece() == null;
+    }
+
 }
