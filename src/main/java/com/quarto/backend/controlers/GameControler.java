@@ -1,5 +1,6 @@
 package com.quarto.backend.controlers;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -111,24 +112,16 @@ public class GameControler {
         return new ResponseEntity<>(gameService.createGame(game), HttpStatus.ACCEPTED);
     }
 
-    @PatchMapping("/{id}/play/ai")
-    ResponseEntity<Game> setAiPosition(@PathVariable String id) {
+    @GetMapping("/{id}/moves")
+    ResponseEntity<List<PositionPostRequest>> getAiMoves(@PathVariable String id) {
         Game game = gameService.getGame(id);
         if (game == null) {
-            return headers(NOT_FOUND, HttpStatus.NOT_FOUND);
+            return aiHeaders(NOT_FOUND, HttpStatus.NOT_FOUND);
         }
         if (game.isOver()) {
-            return headers(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
+            return aiHeaders(GAME_OVER, HttpStatus.METHOD_NOT_ALLOWED);
         }
-        gameService.getAiPositions(gameService.getLastPosition(game)).forEach(positionRequest -> {
-            Game newGame = gameService.getGame(id);
-            Position newPosition = gameService.getNewPosition(
-                    gameService.getLastPosition(newGame),
-                    positionRequest);
-            gameService.addNewPositionToGame(newGame, newPosition);
-            gameService.createGame(newGame);
-        });
-        return new ResponseEntity<>(gameService.getGame(id), HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(gameService.getAiPositions(gameService.getLastPosition(game)), HttpStatus.ACCEPTED);
     }
 
     @DeleteMapping("/{id}")
@@ -148,6 +141,12 @@ public class GameControler {
     }
 
     private ResponseEntity<Game> headers(String message, HttpStatus status) {
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.add(ERROR_MESSAGE, message);
+        return new ResponseEntity<>(null, responseHeaders, status);
+    }
+
+    private ResponseEntity<List<PositionPostRequest>> aiHeaders(String message, HttpStatus status) {
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add(ERROR_MESSAGE, message);
         return new ResponseEntity<>(null, responseHeaders, status);
