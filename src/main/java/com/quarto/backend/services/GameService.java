@@ -413,3 +413,37 @@ public class GameService {
     }
 
 }
+
+// A.I.:
+
+// quand je n'ai pas de piece au premier move,
+// 	placer au hasard.
+
+// quand j'ai une piece,
+// 	gagner, sinon:
+// 	creer une simulations_me de :
+
+// 	pour chaque case libre du board,
+// 	poser la piece sur la case puis pour chaque piece restante du set,
+// 	donner le piece.
+// 	Filtrer les simulations en supprimant celles qui font perdre = qui font gagner le tour d'apres.
+
+// 	si vide, joue au hasard.
+// 	sinon,
+
+// 	Pour chaque simulation de simulations_me,
+// 	lui associer une simulations_you de :
+
+// 	pour chaque case libre du board,
+// 	poser la piece sur la case puis pour chaque piece restante du set,
+// 	donner la piece.
+
+// 	Filtrer les simulations_me en supprimant celles dont une des simulations_you fait systematiquement perdre = fait gagner le tour d'apres.
+
+// 	si vide, joue au hasard une des simulations_me.
+// 	sinon,
+
+// 	refiltrer les simulations_me en ne gardant que celles dont une des simulations_you fait gagner le tour d'apres.
+
+// 	si vide, joue au hasard une des simulations_me filtre une fois.
+// 	sinon, joue au hasard une des simulations_me filtre deux fois.
