@@ -3,14 +3,12 @@ package com.quarto.backend.services;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
-import com.quarto.backend.models.custom.Trio;
 import com.quarto.backend.models.database.Game;
 import com.quarto.backend.models.database.Piece;
 import com.quarto.backend.models.database.Position;
@@ -22,10 +20,14 @@ import com.quarto.backend.repositories.GameRepository;
 
 @Service
 public class GameService {
+    
     @Autowired
     private GameRepository gameRepository;
 
-    private Random rand = new Random();
+    @Autowired
+    private CommonService commonService;
+    
+    private static final String ERROR_MESSAGE = "errorMessage";
 
     public List<Game> getAllGames() {
         return gameRepository.findAll();
@@ -94,48 +96,23 @@ public class GameService {
     }
 
     public Position getNewPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
-        Position newPosition = getNextPosition(lastPosition);
+        Position newPosition = commonService.getNextPosition(lastPosition);
         if (lastPosition.getCurrentPiece() != null) {
             newPosition.getBoard().forEach(square -> {
-                if (isRequestSquare(square, positionPostRequest)) {
+                if (commonService.isRequestSquare(square, positionPostRequest)) {
                     square.setPiece(lastPosition.getCurrentPiece());
                 }
             });
-            scanVictory(newPosition.getBoard());
+            commonService.scanVictory(newPosition.getBoard());
         } else {
             newPosition.getSet().forEach(square -> {
-                if (isRequestSquare(square, positionPostRequest)) {
+                if (commonService.isRequestSquare(square, positionPostRequest)) {
                     newPosition.setCurrentPiece(square.getPiece());
                     square.setPiece(null);
                 }
             });
         }
         return newPosition;
-    }
-
-    private void scanVictory(List<Square> board) {
-        List<List<Square>> tableOfLines = new ArrayList<>();
-        List.of(1, 2, 3, 4).forEach(number -> {
-            List<Square> row = board.stream().filter(square -> square.getRow() == number)
-                    .collect(Collectors.toList());
-            List<Square> column = board.stream().filter(square -> square.getColumn() == number)
-                    .collect(Collectors.toList());
-            tableOfLines.add(row);
-            tableOfLines.add(column);
-        });
-        List<Square> firstDiag = board.stream().filter(square -> square.getRow() == square.getColumn())
-                .collect(Collectors.toList());
-        List<Square> secondDiag = board.stream().filter(square -> square.getRow() + square.getColumn() == 5)
-                .collect(Collectors.toList());
-        tableOfLines.add(firstDiag);
-        tableOfLines.add(secondDiag);
-
-        tableOfLines.stream().forEach(line -> {
-            if (line.stream().allMatch(square -> square.getPiece() != null)
-                    && !getMatchingCharacteristics(line).isEmpty()) {
-                line.forEach(square -> square.setWinner(true));
-            }
-        });
     }
 
     public boolean isconflictPosition(Position lastPosition, PositionPostRequest positionPostRequest) {
@@ -151,242 +128,6 @@ public class GameService {
                         && square.getColumn() == positionPostRequest.getColumn())
                 .findAny();
         return targetSquareOpt.isEmpty() || targetSquareOpt.get().getPiece() == null;
-    }
-
-    private PositionPostRequest getWinningPosition(List<Square> winningSquares) {
-        PositionPostRequest positionPostRequest = new PositionPostRequest();
-        Square winningSquare = getRandom(winningSquares);
-        positionPostRequest.setRow(winningSquare.getRow());
-        positionPostRequest.setColumn(winningSquare.getColumn());
-        return positionPostRequest;
-    }
-
-    private List<List<PositionPostRequest>> getSimulations(List<Square> remainingSet,
-            List<Square> remainingSquares, Position lastPosition) {
-        List<List<PositionPostRequest>> simulations = new ArrayList<>();
-        remainingSquares.forEach(s -> {
-            PositionPostRequest positionPostRequest = new PositionPostRequest(s.getRow(), s.getColumn());
-            Position simulPosition = getNewPosition(lastPosition, positionPostRequest);
-            remainingSet.forEach(sp -> {
-                List<Square> ws = getWinningSquares(simulPosition.getBoard(), sp.getPiece());
-                if (ws.isEmpty()) {
-                    PositionPostRequest positionPostRequest2 = new PositionPostRequest(sp.getRow(),
-                            sp.getColumn());
-                    simulations.add(List.of(positionPostRequest, positionPostRequest2));
-                }
-            });
-        });
-        return simulations;
-    }
-
-    private PositionPostRequest setPieceOnRandomBoardSquare(Position lastPosition) {
-        PositionPostRequest positionPostRequest = new PositionPostRequest();
-        Square square = getRandom(
-                lastPosition.getBoard().stream().filter(s -> s.getPiece() == null).collect(Collectors.toList()));
-        positionPostRequest.setRow(square.getRow());
-        positionPostRequest.setColumn(square.getColumn());
-        return positionPostRequest;
-    }
-
-    private PositionPostRequest giveRandomPieceSquare(Position lastPosition) {
-        PositionPostRequest positionPostRequest = new PositionPostRequest();
-        Square square = getRandom(
-                lastPosition.getSet().stream().filter(s -> s.getPiece() != null).collect(Collectors.toList()));
-        positionPostRequest.setRow(square.getRow());
-        positionPostRequest.setColumn(square.getColumn());
-        return positionPostRequest;
-    }
-
-    private Square getRandom(List<Square> squares) {
-        return squares.get(rand.nextInt(squares.size()));
-    }
-
-    private List<PositionPostRequest> getRandomPostRequests(List<List<PositionPostRequest>> simulations) {
-        return simulations.get(rand.nextInt(simulations.size()));
-    }
-
-    public List<PositionPostRequest> getAiPositions(Position lastPosition) {
-        if (lastPosition.getCurrentPiece() == null) {
-            return List.of(giveRandomPieceSquare(lastPosition));
-        }
-        List<Square> winningSquares = getWinningSquares(lastPosition.getBoard(),
-                lastPosition.getCurrentPiece());
-        if (!winningSquares.isEmpty()) {
-            return List.of(getWinningPosition(winningSquares));
-        }
-        List<Square> remainingSet = getRemainingSquaresWithPiece(lastPosition.getSet());
-        if (remainingSet.isEmpty()) {
-            return List.of(setPieceOnRandomBoardSquare(lastPosition));
-        }
-        List<List<PositionPostRequest>> simulations = getSimulations(remainingSet,
-                getRemainingSquares(lastPosition.getBoard()),
-                lastPosition);
-        if (simulations.isEmpty()) {
-            return List.of(setPieceOnRandomBoardSquare(lastPosition), giveRandomPieceSquare(lastPosition));
-        }
-        return getRandomPostRequests(simulations);
-    }
-
-    private List<Square> getRemainingSquares(List<Square> board) {
-        return copyOf(board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList()));
-    }
-
-    private List<Square> getRemainingSquaresWithPiece(List<Square> set) {
-        return copyOf(set.stream().filter(square -> square.getPiece() != null).collect(Collectors.toList()));
-    }
-
-    private List<Square> getWinningSquares(List<Square> board, Piece currentPiece) {
-        return getAllTrios(board).stream()
-                .filter(trio -> isMatchingPiece(currentPiece, trio.getMatchingPieceCharacteristics()))
-                .map(Trio::getMissingPieceSquare).collect(Collectors.toList());
-    }
-
-    private boolean isMatchingPiece(Piece currentPiece, List<String> matchingPieceCharacteristics) {
-        return matchingPieceCharacteristics.stream().anyMatch(characteristic -> List.of(
-                currentPiece.getColor().toString(),
-                currentPiece.getSize().toString(),
-                currentPiece.getShape().toString(),
-                currentPiece.getTop().toString()).contains(characteristic));
-    }
-
-    private boolean areMatchingSquares(List<Square> squares) {
-        return squares.stream().allMatch(square -> Color.WHITE.equals(square.getPiece().getColor())
-                || Color.BLACK.equals(square.getPiece().getColor())
-                || Size.BIG.equals(square.getPiece().getSize())
-                || Size.SMALL.equals(square.getPiece().getSize())
-                || Shape.SQUARE.equals(square.getPiece().getShape())
-                || Shape.ROUND.equals(square.getPiece().getShape())
-                || Top.FULL.equals(square.getPiece().getTop())
-                || Top.HOLE.equals(square.getPiece().getTop()));
-    }
-
-    private List<Trio> getAllTrios(List<Square> board) {
-        List<Trio> trios = new ArrayList<>();
-        List<Integer> numbers = List.of(1, 2, 3, 4);
-        numbers.forEach(number -> {
-            fillMatchingTrioList(board, trios, "rows", number);
-            fillMatchingTrioList(board, trios, "columns", number);
-        });
-        fillMatchingTrioList(board, trios, "firstDiagonal", 0);
-        fillMatchingTrioList(board, trios, "secondDiagonal", 0);
-        return trios;
-    }
-
-    private void fillMatchingTrioList(List<Square> board, List<Trio> trios, String direction, Integer number) {
-        List<Square> boardLine = board.stream().filter(square -> {
-            switch (direction) {
-                case "firstDiagonal":
-                    return square.getRow() == square.getColumn();
-                case "secondDiagonal":
-                    return square.getRow() + square.getColumn() == 5;
-                case "rows":
-                    return number.intValue() == square.getRow();
-                case "columns":
-                    return number.intValue() == square.getRow();
-                default:
-                    return false;
-            }
-        }).collect(Collectors.toList());
-        List<Square> occupiedSquares = boardLine.stream().filter(square -> square.getPiece() != null)
-                .collect(Collectors.toList());
-        if (occupiedSquares.size() == 3 && areMatchingSquares(occupiedSquares)) {
-            List<String> matchingCharacteristics = getMatchingCharacteristics(occupiedSquares);
-            boardLine.stream().filter(square -> square.getPiece() == null).findAny()
-                    .ifPresent(missingPieceSquare -> trios.add(new Trio(
-                            occupiedSquares,
-                            missingPieceSquare,
-                            matchingCharacteristics)));
-        }
-    }
-
-    private List<String> getMatchingCharacteristics(List<Square> squares) {
-        List<String> matchingCharacteristics = new ArrayList<>();
-        if (squares.stream().allMatch(square -> Color.WHITE.equals(square.getPiece().getColor()))) {
-            matchingCharacteristics.add(Color.WHITE.toString());
-        }
-        if (squares.stream().allMatch(square -> Color.BLACK.equals(square.getPiece().getColor()))) {
-            matchingCharacteristics.add(Color.BLACK.toString());
-        }
-        if (squares.stream().allMatch(square -> Size.BIG.equals(square.getPiece().getSize()))) {
-            matchingCharacteristics.add(Size.BIG.toString());
-        }
-        if (squares.stream().allMatch(square -> Size.SMALL.equals(square.getPiece().getSize()))) {
-            matchingCharacteristics.add(Size.SMALL.toString());
-        }
-        if (squares.stream().allMatch(square -> Shape.SQUARE.equals(square.getPiece().getShape()))) {
-            matchingCharacteristics.add(Shape.SQUARE.toString());
-        }
-        if (squares.stream().allMatch(square -> Shape.ROUND.equals(square.getPiece().getShape()))) {
-            matchingCharacteristics.add(Shape.ROUND.toString());
-        }
-        if (squares.stream().allMatch(square -> Top.FULL.equals(square.getPiece().getTop()))) {
-            matchingCharacteristics.add(Top.FULL.toString());
-        }
-        if (squares.stream().allMatch(square -> Top.HOLE.equals(square.getPiece().getTop()))) {
-            matchingCharacteristics.add(Top.HOLE.toString());
-        }
-        return matchingCharacteristics;
-    }
-
-    private List<Square> buildSquares() {
-        List<Square> squares = new ArrayList<>();
-        List<Integer> numbers = List.of(1, 2, 3, 4);
-        numbers.forEach(row -> numbers.forEach(column -> squares.add(new Square(row, column))));
-        return squares;
-    }
-
-    private boolean isRequestSquare(Square square, PositionPostRequest positionPostRequest) {
-        return square.getRow() == positionPostRequest.getRow()
-                && square.getColumn() == positionPostRequest.getColumn();
-    }
-
-    private Position getNextPosition(Position lastPosition) {
-        int nextPlayerId = lastPosition.getCurrentPlayerId() == 2 ? 1 : 2;
-        return new Position(
-                lastPosition.getRank() + 1,
-                lastPosition.getCurrentPiece() != null ? lastPosition.getCurrentPlayerId() : nextPlayerId,
-                copyOf(lastPosition.getBoard()),
-                copyOf(lastPosition.getSet()),
-                null);
-    }
-
-    private List<Square> copyOf(List<Square> squares) {
-        List<Square> boarsquaresCopy = new ArrayList<>();
-        squares.forEach(square -> {
-            Piece pieceCopy = new Piece();
-            if (square.getPiece() != null) {
-                pieceCopy.setColor(square.getPiece().getColor());
-                pieceCopy.setShape(square.getPiece().getShape());
-                pieceCopy.setSize(square.getPiece().getSize());
-                pieceCopy.setTop(square.getPiece().getTop());
-            } else {
-                pieceCopy = null;
-            }
-            Square squareCopy = new Square(square.getRow(), square.getColumn(), pieceCopy, false);
-            boarsquaresCopy.add(squareCopy);
-        });
-        return boarsquaresCopy;
-    }
-
-    private List<Piece> getPieces() {
-        List<Piece> pieces = new ArrayList<>();
-        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.BIG, Top.FULL));
-        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.BIG, Top.HOLE));
-        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.SMALL, Top.FULL));
-        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.SMALL, Top.HOLE));
-        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.BIG, Top.FULL));
-        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.BIG, Top.HOLE));
-        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.SMALL, Top.FULL));
-        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.SMALL, Top.HOLE));
-        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.BIG, Top.FULL));
-        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.BIG, Top.HOLE));
-        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.SMALL, Top.FULL));
-        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.SMALL, Top.HOLE));
-        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.BIG, Top.FULL));
-        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.BIG, Top.HOLE));
-        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.FULL));
-        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.HOLE));
-        return pieces;
     }
 
     public Position getLastPosition(Game game) {
@@ -412,38 +153,38 @@ public class GameService {
         game.getPositions().add(newPosition);
     }
 
+    public HttpHeaders header(String message) {
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.add(ERROR_MESSAGE, message);
+        return responseHeaders;
+    }
+
+    private List<Square> buildSquares() {
+        List<Square> squares = new ArrayList<>();
+        List<Integer> numbers = List.of(1, 2, 3, 4);
+        numbers.forEach(row -> numbers.forEach(column -> squares.add(new Square(row, column))));
+        return squares;
+    }
+
+    private List<Piece> getPieces() {
+        List<Piece> pieces = new ArrayList<>();
+        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.BIG, Top.FULL));
+        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.BIG, Top.HOLE));
+        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.SMALL, Top.FULL));
+        pieces.add(new Piece(Color.WHITE, Shape.SQUARE, Size.SMALL, Top.HOLE));
+        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.BIG, Top.FULL));
+        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.BIG, Top.HOLE));
+        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.SMALL, Top.FULL));
+        pieces.add(new Piece(Color.WHITE, Shape.ROUND, Size.SMALL, Top.HOLE));
+        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.BIG, Top.FULL));
+        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.BIG, Top.HOLE));
+        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.SMALL, Top.FULL));
+        pieces.add(new Piece(Color.BLACK, Shape.SQUARE, Size.SMALL, Top.HOLE));
+        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.BIG, Top.FULL));
+        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.BIG, Top.HOLE));
+        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.FULL));
+        pieces.add(new Piece(Color.BLACK, Shape.ROUND, Size.SMALL, Top.HOLE));
+        return pieces;
+    }
+
 }
-
-// A.I.:
-
-// quand je n'ai pas de piece au premier move,
-// 	placer au hasard.
-
-// quand j'ai une piece,
-// 	gagner, sinon:
-// 	creer une simulations_me de :
-
-// 	pour chaque case libre du board,
-// 	poser la piece sur la case puis pour chaque piece restante du set,
-// 	donner le piece.
-// 	Filtrer les simulations en supprimant celles qui font perdre = qui font gagner le tour d'apres.
-
-// 	si vide, joue au hasard.
-// 	sinon,
-
-// 	Pour chaque simulation de simulations_me,
-// 	lui associer une simulations_you de :
-
-// 	pour chaque case libre du board,
-// 	poser la piece sur la case puis pour chaque piece restante du set,
-// 	donner la piece.
-
-// 	Filtrer les simulations_me en supprimant celles dont une des simulations_you fait systematiquement perdre = fait gagner le tour d'apres.
-
-// 	si vide, joue au hasard une des simulations_me.
-// 	sinon,
-
-// 	refiltrer les simulations_me en ne gardant que celles dont une des simulations_you fait gagner le tour d'apres.
-
-// 	si vide, joue au hasard une des simulations_me filtre une fois.
-// 	sinon, joue au hasard une des simulations_me filtre deux fois.
