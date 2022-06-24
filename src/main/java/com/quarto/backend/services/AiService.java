@@ -59,12 +59,11 @@ public class AiService {
         if (simulationsNoLoose.isEmpty()) {
             return getRandomMoves(simulations);
         }
-        // sinon, si il ne reste qu'un coup au tour suivant, jouer une simulation
-        if (remainingSquares.size() == 2) {
+        // sinon, si il ne reste qu'un coup au tour suivant ou si il reste plus de 8 squares, jouer une simulation
+        if (remainingSquares.size() == 2 || remainingSquares.size() >= 8) {
             return getRandomMoves(simulationsNoLoose);
         }
-        // sinon
-        // Pour chaque simulation,
+        // sinon, pour chaque simulation,
         // lui associer d'autres simulations de tous les coups suivants possibles:
         simulationsNoLoose.forEach(simulation -> {
             Position lastPosition2 = simulation.getPosition();
@@ -83,37 +82,29 @@ public class AiService {
         }
         // sinon, filtrer les simulations en supprimant celles dont une des simulations
         // fait systematiquement perdre = fait gagner le tour d'apres.
-        List<Simulation> simulationsNoForceLoose = simulationsNoLoose.stream()
-                .filter(simulation -> simulation.getSimulations().stream()
-                        .noneMatch(nextSimulation -> canOpponentWin(nextSimulation.getPosition())))
-                .collect(Collectors.toList());
-        // Si il n'y en a pas
-        if (simulationsNoForceLoose.isEmpty()) {
-            // jouer un coup qui fait gagner le tour d'apres.
-            // Filtrer les simulations en supprimant celles dont une des simulations
-            // fait systematiquement perdre = fait gagner le tour d'apres.
-            List<Simulation> simulationsCanWin = simulationsNoLoose.stream()
-                    .filter(simulation -> simulation.getSimulations().stream()
-                            .anyMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
-                    .collect(Collectors.toList());
-            if (!simulationsCanWin.isEmpty()) {
-                return getRandomMoves(simulationsCanWin);
-            }
-            // sinon jouer au hasard
-            return getRandomMoves(simulationsNoLoose);
-        }
-        // sinon, refiltrer les simulations en ne gardant que celles dont toutes les
-        // simulations fait gagner
-        List<Simulation> simulationsMustWin = simulationsNoForceLoose.stream()
-                .filter(simulation -> simulation.getSimulations().stream()
-                        .allMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
-                .collect(Collectors.toList());
-        if (!simulationsMustWin.isEmpty()) {
-            return getRandomMoves(simulationsMustWin);
-        }
+        // List<Simulation> simulationsNoForceLoose = simulationsNoLoose.stream()
+        //         .filter(simulation -> simulation.getSimulations().stream()
+        //                 .noneMatch(nextSimulation -> canOpponentWin(nextSimulation.getPosition())))
+        //         .collect(Collectors.toList());
+        // // Si il n'y en a pas
+        // if (simulationsNoForceLoose.isEmpty()) {
+        //     // jouer un coup qui fait gagner le tour d'apres.
+        //     // Filtrer les simulations en supprimant celles dont une des simulations
+        //     // fait systematiquement perdre = fait gagner le tour d'apres.
+        //     List<Simulation> simulationsCanWin = simulationsNoLoose.stream()
+        //             .filter(simulation -> simulation.getSimulations().stream()
+        //                     .anyMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
+        //             .collect(Collectors.toList());
+        //     if (!simulationsCanWin.isEmpty()) {
+        //         return getRandomMoves(simulationsCanWin);
+        //     }
+        //     // sinon jouer au hasard
+        //     return getRandomMoves(simulationsNoLoose);
+        // }
+
         // sinon, refiltrer les simulations en ne gardant que celles dont une des
-        // simulations_you fait gagner le tour d'apres.
-        List<Simulation> simulationsCanWin = simulationsNoForceLoose.stream()
+        // simulations fait gagner le tour d'apres.
+        List<Simulation> simulationsCanWin = simulationsNoLoose.stream()
                 .filter(simulation -> simulation.getSimulations().stream()
                         .anyMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
                 .collect(Collectors.toList());
@@ -121,7 +112,7 @@ public class AiService {
             return getRandomMoves(simulationsCanWin);
         }
         // sinon, joue au hasard une des simulations
-        return getRandomMoves(simulationsNoForceLoose);
+        return getRandomMoves(simulationsNoLoose);
     }
 
     private boolean canOpponentWin(Position position) {
