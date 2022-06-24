@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.quarto.backend.models.custom.Simulation;
 import com.quarto.backend.models.custom.Trio;
 import com.quarto.backend.models.database.Piece;
 import com.quarto.backend.models.database.Position;
@@ -24,25 +25,119 @@ public class AiService {
     private Random rand = new Random();
 
     public List<PositionPostRequest> getAiPositions(Position lastPosition) {
+        // si pas de piece au premier move, placer au hasard.
         if (lastPosition.getCurrentPiece() == null) {
             return List.of(giveRandomPieceSquare(lastPosition));
         }
+        // sinon,
         List<Square> winningSquares = getWinningSquares(lastPosition.getBoard(),
                 lastPosition.getCurrentPiece());
+        // si la victoire est possible, gagner.
         if (!winningSquares.isEmpty()) {
             return List.of(getWinningPosition(winningSquares));
         }
+        // sinon regarder les cases restantes.
+        List<Square> remainingSquares = getRemainingSquares(lastPosition.getBoard());
         List<Square> remainingSet = getRemainingSquaresWithPiece(lastPosition.getSet());
-        if (remainingSet.isEmpty()) {
-            return List.of(setPieceOnRandomBoardSquare(lastPosition));
+        // si il n'en reste qu'une, placer la derniere piece.
+        if (remainingSquares.size() == 1) {
+            PositionPostRequest positionPostRequest = new PositionPostRequest();
+            remainingSquares.stream().filter(square -> square.getPiece() == null).findAny().ifPresent(square -> {
+                positionPostRequest.setColumn(square.getColumn());
+                positionPostRequest.setRow(square.getRow());
+            });
+            return List.of(positionPostRequest);
         }
-        List<List<PositionPostRequest>> simulations = getSimulations(remainingSet,
-                getRemainingSquares(lastPosition.getBoard()),
-                lastPosition);
-        if (simulations.isEmpty()) {
-            return List.of(setPieceOnRandomBoardSquare(lastPosition), giveRandomPieceSquare(lastPosition));
+        // sinon, creer des simulations de toutes les combinaisons de coups possibles:
+        List<Simulation> simulations = getSimulations(remainingSet, remainingSquares, lastPosition);
+        // Filtrer les simulations en supprimant celles qui font gagner l'adversaire
+        List<Simulation> simulationsNoLoose = simulations.stream()
+                .filter(simulation -> getWinningSquares(simulation.getPosition().getBoard(),
+                        simulation.getPosition().getCurrentPiece()).isEmpty())
+                .collect(Collectors.toList());
+        // Si il n'y en a pas, jouer au hasard
+        if (simulationsNoLoose.isEmpty()) {
+            return getRandomMoves(simulations);
         }
-        return getRandomPostRequests(simulations);
+        // sinon, si il ne reste qu'un coup au tour suivant, jouer une simulation
+        if (remainingSquares.size() == 2) {
+            return getRandomMoves(simulationsNoLoose);
+        }
+        // sinon
+        // Pour chaque simulation,
+        // lui associer d'autres simulations de tous les coups suivants possibles:
+        simulationsNoLoose.forEach(simulation -> {
+            Position lastPosition2 = simulation.getPosition();
+            List<Square> remainingSquares2 = getRemainingSquares(lastPosition2.getBoard());
+            List<Square> remainingSet2 = getRemainingSquaresWithPiece(lastPosition2.getSet());
+            simulation.setSimulations(getSimulations(remainingSet2, remainingSquares2, lastPosition2));
+        });
+        // si une des simulations de simulations est une victoire forcee, jouer cette
+        // simulation
+        List<Simulation> simulationsForcedWin = simulationsNoLoose.stream()
+                .filter(simulation -> simulation.getSimulations().stream()
+                        .allMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
+                .collect(Collectors.toList());
+        if (!simulationsForcedWin.isEmpty()) {
+            return getRandomMoves(simulationsForcedWin);
+        }
+        // sinon, filtrer les simulations en supprimant celles dont une des simulations
+        // fait systematiquement perdre = fait gagner le tour d'apres.
+        List<Simulation> simulationsNoForceLoose = simulationsNoLoose.stream()
+                .filter(simulation -> simulation.getSimulations().stream()
+                        .noneMatch(nextSimulation -> canOpponentWin(nextSimulation.getPosition())))
+                .collect(Collectors.toList());
+        // Si il n'y en a pas
+        if (simulationsNoForceLoose.isEmpty()) {
+            // jouer un coup qui fait gagner le tour d'apres.
+            // Filtrer les simulations en supprimant celles dont une des simulations
+            // fait systematiquement perdre = fait gagner le tour d'apres.
+            List<Simulation> simulationsCanWin = simulationsNoLoose.stream()
+                    .filter(simulation -> simulation.getSimulations().stream()
+                            .anyMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
+                    .collect(Collectors.toList());
+            if (!simulationsCanWin.isEmpty()) {
+                return getRandomMoves(simulationsCanWin);
+            }
+            // sinon jouer au hasard
+            return getRandomMoves(simulationsNoLoose);
+        }
+        // sinon, refiltrer les simulations en ne gardant que celles dont toutes les
+        // simulations fait gagner
+        List<Simulation> simulationsMustWin = simulationsNoForceLoose.stream()
+                .filter(simulation -> simulation.getSimulations().stream()
+                        .allMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
+                .collect(Collectors.toList());
+        if (!simulationsMustWin.isEmpty()) {
+            return getRandomMoves(simulationsMustWin);
+        }
+        // sinon, refiltrer les simulations en ne gardant que celles dont une des
+        // simulations_you fait gagner le tour d'apres.
+        List<Simulation> simulationsCanWin = simulationsNoForceLoose.stream()
+                .filter(simulation -> simulation.getSimulations().stream()
+                        .anyMatch(nextSimulation -> canWin(nextSimulation.getPosition())))
+                .collect(Collectors.toList());
+        if (!simulationsCanWin.isEmpty()) {
+            return getRandomMoves(simulationsCanWin);
+        }
+        // sinon, joue au hasard une des simulations
+        return getRandomMoves(simulationsNoForceLoose);
+    }
+
+    private boolean canOpponentWin(Position position) {
+        // quelque soit ou je place ma piece, la piece que je donnerai gagnera
+        List<Square> remainingSquares = getRemainingSquares(position.getBoard());
+        List<Square> remainingSet = getRemainingSquaresWithPiece(position.getSet());
+        if (remainingSquares.isEmpty() || remainingSet.isEmpty()) {
+            return false;
+        }
+        return getSimulations(remainingSet, remainingSquares, position).stream()
+                .noneMatch(simulation -> getWinningSquares(simulation.getPosition().getBoard(),
+                        simulation.getPosition().getCurrentPiece()).isEmpty());
+    }
+
+    private boolean canWin(Position position) {
+        return !getWinningSquares(position.getBoard(), position.getCurrentPiece()).isEmpty();
     }
 
     private PositionPostRequest getWinningPosition(List<Square> winningSquares) {
@@ -53,31 +148,30 @@ public class AiService {
         return positionPostRequest;
     }
 
-    private List<List<PositionPostRequest>> getSimulations(List<Square> remainingSet,
-            List<Square> remainingSquares, Position lastPosition) {
-        List<List<PositionPostRequest>> simulations = new ArrayList<>();
-        remainingSquares.forEach(s -> {
-            PositionPostRequest positionPostRequest = new PositionPostRequest(s.getRow(), s.getColumn());
+    private List<PositionPostRequest> getRandomMoves(List<Simulation> simulations) {
+        Simulation randomSimulation = getRandomSimulation(simulations);
+        return List.of(randomSimulation.getPutPiece(), randomSimulation.getGivePiece());
+    }
+
+    private List<Simulation> getSimulations(List<Square> remainingSet, List<Square> remainingSquares,
+            Position lastPosition) {
+        List<Simulation> simulations = new ArrayList<>();
+        // pour chaque case libre du board,
+        remainingSquares.forEach(remainingSquare -> {
+            // poser la piece sur la case puis pour chaque piece restante du set,
+            PositionPostRequest positionPostRequest = new PositionPostRequest(remainingSquare.getRow(),
+                    remainingSquare.getColumn());
             Position simulPosition = commonService.getNewPosition(lastPosition, positionPostRequest);
-            remainingSet.forEach(sp -> {
-                List<Square> ws = getWinningSquares(simulPosition.getBoard(), sp.getPiece());
-                if (ws.isEmpty()) {
-                    PositionPostRequest positionPostRequest2 = new PositionPostRequest(sp.getRow(),
-                            sp.getColumn());
-                    simulations.add(List.of(positionPostRequest, positionPostRequest2));
-                }
+            remainingSet.forEach(remainingPiece -> {
+                // donner le piece.
+                PositionPostRequest positionPostRequest2 = new PositionPostRequest(remainingPiece.getRow(),
+                        remainingPiece.getColumn());
+                Position simulPosition2 = commonService.getNewPosition(simulPosition, positionPostRequest2);
+                simulations.add(
+                        new Simulation(positionPostRequest, positionPostRequest2, simulPosition2, new ArrayList<>()));
             });
         });
         return simulations;
-    }
-
-    private PositionPostRequest setPieceOnRandomBoardSquare(Position lastPosition) {
-        PositionPostRequest positionPostRequest = new PositionPostRequest();
-        Square square = getRandom(
-                lastPosition.getBoard().stream().filter(s -> s.getPiece() == null).collect(Collectors.toList()));
-        positionPostRequest.setRow(square.getRow());
-        positionPostRequest.setColumn(square.getColumn());
-        return positionPostRequest;
     }
 
     private PositionPostRequest giveRandomPieceSquare(Position lastPosition) {
@@ -93,12 +187,17 @@ public class AiService {
         return squares.get(rand.nextInt(squares.size()));
     }
 
+    private Simulation getRandomSimulation(List<Simulation> simulations) {
+        return simulations.get(rand.nextInt(simulations.size()));
+    }
+
     private List<PositionPostRequest> getRandomPostRequests(List<List<PositionPostRequest>> simulations) {
         return simulations.get(rand.nextInt(simulations.size()));
     }
 
     private List<Square> getRemainingSquares(List<Square> board) {
-        return commonService.copyOf(board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList()));
+        return commonService
+                .copyOf(board.stream().filter(square -> square.getPiece() == null).collect(Collectors.toList()));
     }
 
     private List<Square> getRemainingSquaresWithPiece(List<Square> set) {
@@ -171,37 +270,3 @@ public class AiService {
     }
 
 }
-
-// A.I.:
-
-// quand je n'ai pas de piece au premier move,
-// 	placer au hasard.
-
-// quand j'ai une piece,
-// 	gagner, sinon:
-// 	creer une simulations_me de :
-
-// 	pour chaque case libre du board,
-// 	poser la piece sur la case puis pour chaque piece restante du set,
-// 	donner le piece.
-// 	Filtrer les simulations en supprimant celles qui font perdre = qui font gagner le tour d'apres.
-
-// 	si vide, joue au hasard.
-// 	sinon,
-
-// 	Pour chaque simulation de simulations_me,
-// 	lui associer une simulations_you de :
-
-// 	pour chaque case libre du board,
-// 	poser la piece sur la case puis pour chaque piece restante du set,
-// 	donner la piece.
-
-// 	Filtrer les simulations_me en supprimant celles dont une des simulations_you fait systematiquement perdre = fait gagner le tour d'apres.
-
-// 	si vide, joue au hasard une des simulations_me.
-// 	sinon,
-
-// 	refiltrer les simulations_me en ne gardant que celles dont une des simulations_you fait gagner le tour d'apres.
-
-// 	si vide, joue au hasard une des simulations_me filtre une fois.
-// 	sinon, joue au hasard une des simulations_me filtre deux fois.
